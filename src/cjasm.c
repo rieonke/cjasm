@@ -58,11 +58,13 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     //比如 magic + version + cp count + 必要的cp entries + access + this_class 等
     //则返回NULL
     if (buf == NULL || len < 16) { //fixme 仔细算算
+        fprintf(stderr, "ERROR: not a valid class bytecode buffer, to small\n");
         return NULL;
     }
 
     u4 magic = cj_ru4(buf);
     if (magic != 0xCAFEBABE) {
+        fprintf(stderr, "ERROR: not a valid class bytecode buffer, invalid magic number\n");
         return NULL;
     }
 

@@ -52,10 +52,10 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len);
 void cj_class_free(cj_class_t *ctx);
 
 /**
- *
- * @param ctx
- * @param idx
- * @return
+ * get a string from constant pool
+ * @param ctx cj class
+ * @param idx constant entry index
+ * @return string , NULL if does not exists or is not a CONSTANT_Utf8
  */
 char *cj_cp_get_str(cj_class_t *ctx, u2 idx);
 

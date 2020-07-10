@@ -12,9 +12,41 @@
 #include <string.h>
 #include <sys/types.h>
 
-#define btol32 ntohl
-#define btol16 ntohs
-#define btol64 ntohll
+#if defined(__APPLE__)
+
+#include <machine/endian.h>
+#include <libkern/OSByteOrder.h>
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+
+#define btol16(x) OSSwapInt16(x)
+#define btol32(x) OSSwapInt32(x)
+#define btol64(x) OSSwapInt64(x)
+
+#elif BYTE_ORDER == BIG_ENDIAN
+
+#define btol16(x) (x)
+#define btol32(x) (x)
+#define btol64(x) (x)
+
+#endif
+
+
+#else
+
+#error "unsupported os type"
+
+#endif
+
+//todo impl windows & linux
+
+#define cj_ri1(ptr) (*(i1 *) (ptr))
+#define cj_ri2(ptr) btol16(*(i2 *) (ptr))
+#define cj_ri4(ptr) btol32(*(i4 *) (ptr))
+#define cj_ru1(ptr) (*(u1 *) (ptr))
+#define cj_ru2(ptr) btol16(*(u2 *) (ptr))
+#define cj_ru4(ptr) btol32(*(u4 *) (ptr))
+#define cj_ru8(ptr) btol64(*(u8 *) (ptr))
 
 
 //@formatter:off
@@ -39,95 +71,34 @@ enum cj_cp_type {
 };
 //@formatter:on
 
-#define tos(v) #v
-
 static void print_type(enum cj_cp_type t) {
 
-    switch (t) {
+#define PRINT_TYPE(t) \
+    case t: \
+        printf("%s\n", #t);\
+        break;
 
-        case CONSTANT_Class:
-            printf("%s\n", tos(CONSTANT_Class));
-            break;
-        case CONSTANT_Fieldref:
-            printf("%s\n", tos(CONSTANT_Fieldref));
-            break;
-        case CONSTANT_Methodref:
-            printf("%s\n", tos(CONSTANT_Methodref));
-            break;
-        case CONSTANT_InterfaceMethodref:
-            printf("%s\n", tos(CONSTANT_InterfaceMethodref));
-            break;
-        case CONSTANT_String:
-            printf("%s\n", tos(CONSTANT_String));
-            break;
-        case CONSTANT_Integer:
-            printf("%s\n", tos(CONSTANT_Integer));
-            break;
-        case CONSTANT_Float:
-            printf("%s\n", tos(CONSTANT_Float));
-            break;
-        case CONSTANT_Long:
-            printf("%s\n", tos(CONSTANT_Long));
-            break;
-        case CONSTANT_Double:
-            printf("%s\n", tos(CONSTANT_Double));
-            break;
-        case CONSTANT_NameAndType:
-            printf("%s\n", tos(CONSTANT_NameAndType));
-            break;
-        case CONSTANT_Utf8:
-            printf("%s\n", tos(CONSTANT_Utf8));
-            break;
-        case CONSTANT_MethodHandle:
-            printf("%s\n", tos(CONSTANT_MethodHandle));
-            break;
-        case CONSTANT_MethodType:
-            printf("%s\n", tos(CONSTANT_MethodType));
-            break;
-        case CONSTANT_Dynamic:
-            printf("%s\n", tos(CONSTANT_Dynamic));
-            break;
-        case CONSTANT_InvokeDynamic:
-            printf("%s\n", tos(CONSTANT_InvokeDynamic));
-            break;
-        case CONSTANT_Module:
-            printf("%s\n", tos(CONSTANT_Module));
-            break;
-        case CONSTANT_Package:
-            printf("%s\n", tos(CONSTANT_Package));
-            break;
+    switch (t) {
+        PRINT_TYPE(CONSTANT_Class)
+        PRINT_TYPE(CONSTANT_Fieldref)
+        PRINT_TYPE(CONSTANT_Methodref)
+        PRINT_TYPE(CONSTANT_InterfaceMethodref)
+        PRINT_TYPE(CONSTANT_String)
+        PRINT_TYPE(CONSTANT_Integer)
+        PRINT_TYPE(CONSTANT_Float)
+        PRINT_TYPE(CONSTANT_Long)
+        PRINT_TYPE(CONSTANT_Double)
+        PRINT_TYPE(CONSTANT_NameAndType)
+        PRINT_TYPE(CONSTANT_Utf8)
+        PRINT_TYPE(CONSTANT_MethodHandle)
+        PRINT_TYPE(CONSTANT_MethodType)
+        PRINT_TYPE(CONSTANT_Dynamic)
+        PRINT_TYPE(CONSTANT_InvokeDynamic)
+        PRINT_TYPE(CONSTANT_Module)
+        PRINT_TYPE(CONSTANT_Package)
     }
 
+#undef PRINT_TYPE
 }
-
-
-static inline i1 cj_ri1(const unsigned char *ptr) {
-    return *(i1 *) (ptr);
-}
-
-static inline i2 cj_ri2(const unsigned char *ptr) {
-    return btol16(*(i2 *) (ptr));
-}
-
-static inline i4 cj_ri4(const unsigned char *ptr) {
-    return btol32(*(i4 *) (ptr));
-}
-
-static inline u1 cj_ru1(const unsigned char *ptr) {
-    return *(u1 *) (ptr);
-}
-
-static inline u2 cj_ru2(const unsigned char *ptr) {
-    return btol16(*(u2 *) (ptr));
-}
-
-static inline u4 cj_ru4(const unsigned char *ptr) {
-    return btol32(*(u4 *) (ptr));
-}
-
-static inline u8 cj_ru8(const unsigned char *ptr) {
-    return btol64(*(u8 *) (ptr));
-}
-
 
 #endif //CJASM_UTIL_H

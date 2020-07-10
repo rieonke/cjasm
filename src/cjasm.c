@@ -156,8 +156,9 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
                 cp_size = 2 + cj_ru2(buf + cur_cp_offset);
                 break;
             default:
-                fprintf(stderr, "ERROR\n");
-                break;
+                fprintf(stderr, "ERROR: invalid class format, unrecognized cp entry tag: %d\n", type);
+                free(cp_offsets);
+                return NULL;
         }
         cur_cp_offset += cp_size;
     }
@@ -177,30 +178,42 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     cls->header = header;
     cls->access_flags = access_flags;
     cls->cp_offsets = cp_offsets;
+    cls->cp_cache = calloc(cp_len, sizeof(char *));
     return cls;
 }
 
-int cj_cp_get_str(cj_class_t *ctx, u2 idx, unsigned char **out) {
+char *cj_cp_get_str(cj_class_t *ctx, u2 idx) {
 
     if (ctx->cp_len - 1 < idx) {
-        return -1;
+        return NULL;
     }
 
-    u2 offset = ctx->cp_offsets[idx];
-    const unsigned char *ptr = ctx->buf + offset;
+    if (ctx->cp_cache[idx] == NULL) {
+        u2 offset = ctx->cp_offsets[idx];
+        const unsigned char *ptr = ctx->buf + offset;
 
-    u2 len = cj_ru2(ptr);
-    *out = malloc(sizeof(char) * (len + 1));
-    (*out)[len] = 0;
-    memcpy(*out, ptr + 2, len);
+        u2 len = cj_ru2(ptr);
+        ctx->cp_cache[idx] = malloc(sizeof(char) * (len + 1));
+        ctx->cp_cache[idx][len] = 0;
+        memcpy(ctx->cp_cache[idx], ptr + 2, len);
+    }
 
-    return len;
+    return ctx->cp_cache[idx];
 }
 
 void cj_class_free(cj_class_t *ctx) {
     if (ctx == NULL) return;
     free((void *) ctx->buf);
     free(ctx->cp_offsets);
+
+    for (int i = 0; i < ctx->cp_len; ++i) {
+        if (ctx->cp_cache[i] != NULL) {
+            free(ctx->cp_cache[i]);
+            ctx->cp_cache[i] = NULL;
+        }
+    }
+
+    free(ctx->cp_cache);
     free(ctx);
 }
 

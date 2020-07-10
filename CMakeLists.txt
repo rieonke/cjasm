@@ -25,7 +25,7 @@ endfunction()
 
 file(GLOB TEST_FILES "test/resources/*")
 foreach (tf IN LISTS TEST_FILES)
-    configure_file(${tf} ${CMAKE_BINARY_DIR})
+    configure_file(${tf} ${CMAKE_BINARY_DIR} COPYONLY)
     message(STATUS "copy test resource ${tf}")
 endforeach ()
 

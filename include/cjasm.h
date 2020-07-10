@@ -23,6 +23,7 @@ struct cj_class_s {
     u2 minor_version;
     u2 cp_len;
     u2 *cp_offsets;
+    char **cp_cache;
     u4 header;
     u2 access_flags;
     unsigned char const *buf;
@@ -51,10 +52,11 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len);
 void cj_class_free(cj_class_t *ctx);
 
 /**
- * get a string from constant pool.
- * @param cls cj class context
- * @return string, should be freed by yourself
+ *
+ * @param ctx
+ * @param idx
+ * @return
  */
-int cj_cp_get_str(cj_class_t *ctx, u2 idx, unsigned char **out);
+char *cj_cp_get_str(cj_class_t *ctx, u2 idx);
 
 #endif //CJASM_CJASM_H

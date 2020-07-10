@@ -48,14 +48,16 @@ void test_check_access_flags(void **state) {
 
 void test_get_str(void **ctx) {
 
-    unsigned char *str = NULL;
-    int slen = cj_cp_get_str(*ctx, INIT_IDX, &str);
+    char* str = cj_cp_get_str(*ctx, INIT_IDX);
+    char* str1 = cj_cp_get_str(*ctx, INIT_IDX);
 
-    assert(slen > 0);
     assert_non_null(str);
     assert_string_equal(str, "<init>");
 
-    free(str);
+    assert_ptr_equal(str, str1);
+    assert_non_null(str1);
+    assert_string_equal(str1, "<init>");
+
 }
 
 

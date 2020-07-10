@@ -1,0 +1,12 @@
+ {
+   <libSystem>
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/libSystem.B.dylib
+}
+{
+   <libSystem>
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/libobjc.A.dylib
+}

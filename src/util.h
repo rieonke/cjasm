@@ -81,9 +81,10 @@ struct cj_class_priv_s {
     u2 super_class;
 
     cj_field_t **field_cache;
-    u2 *field_offsets;
+    u4 *field_offsets;
 
-    u2 *method_offsets;
+    cj_method_t **method_cache;
+    u4 *method_offsets;
     u4 attribute_offset;
 };
 

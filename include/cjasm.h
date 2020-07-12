@@ -21,18 +21,28 @@ typedef void *cj_pointer;
 
 typedef struct cj_class_s cj_class_t;
 typedef struct cj_field_s cj_field_t;
+typedef struct cj_method_s cj_method_t;
 
 struct cj_class_s {
     u2 major_version;
     u2 minor_version;
     u2 access_flags;
-    u2 interfaces_count;
+    u2 interface_count;
     u2 field_count;
     u2 method_count;
     cj_pointer priv;
 };
 
 struct cj_field_s {
+    u2 access_flags;
+    cj_class_t *klass;
+    const unsigned char *name;
+    const unsigned char *descriptor;
+    const char *ptr;
+    u2 index;
+};
+
+struct cj_method_s {
     u2 access_flags;
     cj_class_t *klass;
     const unsigned char *name;
@@ -107,6 +117,22 @@ cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx);
 u2 cj_class_get_field_count(cj_class_t *ctx);
 
 /**
+ * 获取类的方法数量
+ * @param ctx  类
+ * @return 方法数量，大于或等于0
+ */
+u2 cj_class_get_method_count(cj_class_t *ctx);
+
+/**
+ * 根据索引获取类的字段.
+ * 返回值不可被释放.
+ * @param ctx 类
+ * @param idx 方法索引
+ * @return 方法，如果不存在该索引值，则返回NULL
+ */
+cj_method_t *cj_class_get_method(cj_class_t *ctx, u2 idx);
+
+/**
  * 获取字段名.
  * 返回值不可被释放.
  * @param field cj 字段
@@ -136,5 +162,10 @@ u2 cj_field_get_access_flags(cj_field_t *field);
  */
 const unsigned char *cj_field_get_descriptor(cj_field_t *field);
 
+const unsigned char *cj_method_get_name(cj_method_t *method);
+
+u2 cj_method_get_access_flags(cj_method_t *method);
+
+const unsigned char *cj_method_get_descriptor(cj_method_t *method);
 
 #endif //CJASM_CJASM_H

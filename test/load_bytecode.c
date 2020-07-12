@@ -59,7 +59,7 @@ void test_check_field(void **state) {
     const unsigned char *name = cj_field_get_name(field);
     assert_string_equal(name, "name");
 
-    cj_field_set_name(field, "hello");
+    cj_field_set_name(field, (const unsigned char *) "hello");
 
     assert_string_equal(cj_field_get_name(field), "hello");
 
@@ -68,6 +68,15 @@ void test_check_field(void **state) {
 
     const unsigned char *str = cj_cp_get_str(CTX, priv(CTX)->cp_len);
     assert_string_equal(str, "hello");
+
+}
+
+void test_check_method(void **state) {
+
+    cj_method_t *method = cj_class_get_method(CTX, 0);
+    const unsigned char *name = cj_method_get_name(method);
+    assert_string_equal(name, "<init>");
+
 
 }
 
@@ -92,6 +101,7 @@ int main(void) {
             cmocka_unit_test(test_check_access_flags),
             cmocka_unit_test(test_check_class_name),
             cmocka_unit_test(test_check_version),
+            cmocka_unit_test(test_check_method),
             cmocka_unit_test(test_check_field),
             cmocka_unit_test(test_get_str),
     };

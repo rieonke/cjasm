@@ -35,8 +35,8 @@ struct cj_class_s {
 struct cj_field_s {
     u2 access_flags;
     cj_class_t *klass;
-    const char *name;
-    const char *descriptor;
+    const unsigned char *name;
+    const unsigned char *descriptor;
     const char *ptr;
     u2 index;
 };
@@ -58,6 +58,15 @@ long cj_load_file(char *path, unsigned char **buf);
 cj_class_t *cj_class_new(unsigned char *buf, size_t len);
 
 /**
+ * 生成字节码.
+ * @param ctx cj 类
+ * @param out 输出字节码，使用后应被释放，出现错误时，输出为NULL
+ * @param len 输出字节码长度，出现错误时，输出为0
+ * @return 是否成功
+ */
+bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len);
+
+/**
  * free a cj class context
  * @param ctx class context
  */
@@ -70,7 +79,7 @@ void cj_class_free(cj_class_t *ctx);
  * @param idx 常量池索引，[1 - 常量池长度)
  * @return 字符串，当不存在该索引值或者该常量不是字符串类型时，返回NULL。
  */
-char *cj_cp_get_str(cj_class_t *ctx, u2 idx);
+const unsigned char *cj_cp_get_str(cj_class_t *ctx, u2 idx);
 
 
 /**
@@ -79,7 +88,7 @@ char *cj_cp_get_str(cj_class_t *ctx, u2 idx);
  * @param ctx 类
  * @return 类名
  */
-const char *cj_class_get_name(cj_class_t *ctx);
+const unsigned char *cj_class_get_name(cj_class_t *ctx);
 
 /**
  * 根据索引获取类的字段.
@@ -103,7 +112,14 @@ u2 cj_class_get_field_count(cj_class_t *ctx);
  * @param field cj 字段
  * @return 字段名，不可被释放.
  */
-const char *cj_field_get_name(cj_field_t *field);
+const unsigned char *cj_field_get_name(cj_field_t *field);
+
+/**
+ * 设置字段名.
+ * @param field  字段.
+ * @param name 名称.
+ */
+void cj_field_set_name(cj_field_t *field, const unsigned char *name);
 
 /**
  * 获取字段Access Flags.
@@ -118,7 +134,7 @@ u2 cj_field_get_access_flags(cj_field_t *field);
  * @param field 字段
  * @return 字段描述符，不可被释放.
  */
-const char *cj_field_get_descriptor(cj_field_t *field);
+const unsigned char *cj_field_get_descriptor(cj_field_t *field);
 
 
 #endif //CJASM_CJASM_H

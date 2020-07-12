@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #if defined(__APPLE__)
@@ -38,10 +39,6 @@
 
 #endif
 
-//#define btol32 ntohl
-//#define btol16 ntohs
-//#define btol64 ntohll
-
 
 //todo impl windows & linux
 
@@ -53,14 +50,42 @@
 #define cj_ru4(ptr) btol32(*(u4 *) (ptr)) /*NOLINT*/
 #define cj_ru8(ptr) btol64(*(u8 *) (ptr)) /*NOLINT*/
 
-//static inline i1 cj_ri1(const unsigned char *ptr) { return (*(i1 *) (ptr)); }
-//static inline i2 cj_ri2(const unsigned char *ptr) { return btol16(*(i2 *) (ptr));/*NOLINT*/ }
-//static inline i4 cj_ri4(const unsigned char *ptr) { return btol32(*(i4 *) (ptr)); }
-//static inline u1 cj_ru1(const unsigned char *ptr) { return (*(u1 *) (ptr)); }
-//static inline u2 cj_ru2(const unsigned char *ptr) { return btol16(*(u2 *) (ptr)); }
-//static inline u4 cj_ru4(const unsigned char *ptr) { return btol32(*(u4 *) (ptr)); }
-//static inline u8 cj_ru8(const unsigned char *ptr) { return btol64(*(u8 *) (ptr)); }
+#define CJ_INTERNAL
+#define priv(c) ((cj_class_priv_t*)(c->priv))
+#define cj_sfree(ptr) if(ptr != NULL) free(ptr);
 
+typedef struct cj_cp_entry_s cj_cp_entry_t;
+struct cj_cp_entry_s {
+    u1 tag;
+    u2 len;
+    unsigned char *data;
+};
+
+
+typedef struct cj_class_priv_s cj_class_priv_t;
+struct cj_class_priv_s {
+    bool dirty;
+    unsigned char const *buf;
+    size_t buf_len;
+
+    u4 header;
+
+    u2 cp_len;
+    u1 *cp_types;
+    u2 *cp_offsets;
+    unsigned char **cp_cache;
+    cj_cp_entry_t **cp_entries;
+    u2 cp_entries_len;
+
+    u2 this_class;
+    u2 super_class;
+
+    cj_field_t **field_cache;
+    u2 *field_offsets;
+
+    u2 *method_offsets;
+    u4 attribute_offset;
+};
 
 //@formatter:off
 enum cj_cp_type {
@@ -112,6 +137,43 @@ static void print_type(enum cj_cp_type t) {
     }
 
 #undef PRINT_TYPE
+}
+
+static const unsigned char *cj_cp_put_str(cj_class_t *ctx, const unsigned char *name, size_t len, u2 *index) {
+    // 检查现有的常量池中是否有当前字符串
+    // 如果有，则直接返回现有的字符串
+    // 如果不存在，则将该字符串放置于新的常量池中
+    for (int i = 1; i < priv(ctx)->cp_len; ++i) {
+        u1 type = priv(ctx)->cp_types[i];
+        if (type == CONSTANT_Utf8) {
+            const unsigned char *str = cj_cp_get_str(ctx, i);
+            if (strncmp((char *) str, (char *) name, len) == 0) {
+                if (index != NULL) *index = i;
+                return str;
+            }
+        } else if (type == CONSTANT_Long || type == CONSTANT_Double) {
+            i++;
+        }
+    }
+
+    u2 cur_idx = priv(ctx)->cp_entries_len++;
+    if (priv(ctx)->cp_entries == NULL) {
+        priv(ctx)->cp_entries = malloc(sizeof(cj_cp_entry_t *));
+    } else {
+        priv(ctx)->cp_entries = realloc(priv(ctx)->cp_entries, sizeof(cj_cp_entry_t *) * priv(ctx)->cp_entries_len);
+    }
+
+    cj_cp_entry_t *entry = malloc(sizeof(cj_cp_entry_t));
+    entry->tag = CONSTANT_Utf8;
+    entry->len = len;
+    entry->data = (unsigned char *) strndup((char *) name, len);
+
+    if (index != NULL) {
+        *index = cur_idx + priv(ctx)->cp_len - 1;
+    }
+
+    priv(ctx)->cp_entries[cur_idx] = entry;
+    return entry->data;
 }
 
 #endif //CJASM_UTIL_H

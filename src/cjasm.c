@@ -8,29 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CJ_INTERNAL
-#define priv(c) ((cj_class_priv_t*)(c->priv))
-#define cj_sfree(ptr) if(ptr != NULL) free(ptr);
-
-typedef struct cj_class_priv_s cj_class_priv_t;
-struct cj_class_priv_s {
-    unsigned char const *buf;
-
-    u4 header;
-
-    u2 cp_len;
-    u2 *cp_offsets;
-    char **cp_cache;
-
-    u2 this_class;
-    u2 super_class;
-
-    cj_field_t **field_cache;
-    u2 *field_offsets;
-
-    u2 *method_offsets;
-    u4 attribute_offset;
-};
 
 /*
  ClassFile {
@@ -161,20 +138,17 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     //todo check version
 
     u2 *cp_offsets = malloc(cp_len * sizeof(u2)); //常量池偏移地址映射，根据常量下标[1,cp_len)获取，第0位元素弃用
+    u1 *cp_types = malloc(cp_len * sizeof(u1));
     int cur_cp_idx = 1;
     u4 cur_cp_offset = 10;
     while (cur_cp_idx < cp_len) {
-        *(cp_offsets + cur_cp_idx++) = cur_cp_offset + 1;
-        int cp_size = 0;
 
-        //此处cur_cp_offset ++ 以后，
-        //当前偏移量直接指向tag之后的数据区域
-        //可以直接通过当前偏移量获取数据
+        int cp_size = 0;
         enum cj_cp_type type = (enum cj_cp_type) cj_ru1(buf + cur_cp_offset++);
-#ifdef CJ_DEBUG
-        printf("%d => ", cur_cp_idx - 1);
-        print_type(type);
-#endif
+
+        *(cp_types + cur_cp_idx) = type;
+        *(cp_offsets + cur_cp_idx) = cur_cp_offset;
+        cur_cp_idx++;
         switch (type) {
             /*+-----------------------------+-----+--------+
               |        Constant Kind        | Tag | Length |
@@ -243,13 +217,6 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
                 break;
             case CONSTANT_Utf8: {
                 cp_size = 2 + cj_ru2(buf + cur_cp_offset);
-#if CJ_DEBUG
-                unsigned char *ptr = buf + cur_cp_offset + 2;
-                char *str = calloc(sizeof(char *), cp_size);
-                memcpy(str, ptr, cp_size - 2);
-                printf(" %s", str);
-                free(str);
-#endif
                 break;
             }
             default:
@@ -257,9 +224,6 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
                 free(cp_offsets);
                 return NULL;
         }
-#if CJ_DEBUG
-        printf("\n");
-#endif
         cur_cp_offset += cp_size;
     }
 
@@ -282,16 +246,21 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     cls->interfaces_count = interfaces_count;
     cls->priv = priv;
 
+    priv(cls)->dirty = false;
     priv(cls)->cp_len = cp_len;
     priv(cls)->header = header;
     priv(cls)->cp_offsets = cp_offsets;
     priv(cls)->cp_cache = calloc(cp_len, sizeof(char *));
+    priv(cls)->cp_types = cp_types;
     priv(cls)->this_class = this_class;
     priv(cls)->super_class = super_class;
     priv(cls)->field_offsets = NULL;
     priv(cls)->method_offsets = NULL;
     priv(cls)->field_cache = NULL;
     priv(cls)->buf = malloc(sizeof(char) * len);
+    priv(cls)->buf_len = len;
+    priv(cls)->cp_entries = NULL;
+    priv(cls)->cp_entries_len = 0;
     memcpy((unsigned char *) priv(cls)->buf, buf, len);
 
     cj_parse_offset(cls);
@@ -299,36 +268,55 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     return cls;
 }
 
-char *cj_cp_get_str(cj_class_t *ctx, u2 idx) {
+const unsigned char *cj_cp_get_str(cj_class_t *ctx, u2 idx) {
 
-    if (priv(ctx)->cp_len - 1 < idx) {
+    if (idx >= priv(ctx)->cp_len && priv(ctx)->cp_entries == NULL) {
         return NULL;
     }
 
-    if (priv(ctx)->cp_cache[idx] == NULL) {
-        u2 offset = priv(ctx)->cp_offsets[idx];
-        const unsigned char *ptr = priv(ctx)->buf + offset;
+    //如果该索引在原有常量池范围内，则在原有的常量池中查找
+    //否则如果索引已经超过了原有常量池的大小，则从新增常量数组中查找.
 
-        u2 len = cj_ru2(ptr);
-        priv(ctx)->cp_cache[idx] = malloc(sizeof(char) * (len + 1));
-        priv(ctx)->cp_cache[idx][len] = 0;
-        memcpy(priv(ctx)->cp_cache[idx], ptr + 2, len);
+    if (priv(ctx)->cp_len > idx) {
+        if (priv(ctx)->cp_cache[idx] == NULL) {
+            u2 offset = priv(ctx)->cp_offsets[idx];
+            const unsigned char *ptr = priv(ctx)->buf + offset;
+
+            u2 len = cj_ru2(ptr);
+            priv(ctx)->cp_cache[idx] = malloc(sizeof(char) * (len + 1));
+            priv(ctx)->cp_cache[idx][len] = 0;
+            memcpy(priv(ctx)->cp_cache[idx], ptr + 2, len);
+        }
+        return priv(ctx)->cp_cache[idx];
     }
 
-    return priv(ctx)->cp_cache[idx];
+    u2 new_idx = idx - priv(ctx)->cp_len;
+    if (new_idx >= 0 && new_idx < priv(ctx)->cp_entries_len) {
+        cj_cp_entry_t *entry = priv(ctx)->cp_entries[new_idx];
+        if (entry == NULL) return NULL;
+        if (entry->tag != CONSTANT_Utf8) return NULL;
+        return entry->data;
+    }
+
+    return NULL;
 }
 
 void cj_class_free(cj_class_t *ctx) {
     if (ctx == NULL) return;
-    free((void *) priv(ctx)->buf);
-    free(priv(ctx)->cp_offsets);
+    cj_sfree((void *) priv(ctx)->buf);
+    cj_sfree(priv(ctx)->cp_offsets);
+    cj_sfree(priv(ctx)->cp_types);
+    cj_sfree(priv(ctx)->method_offsets);
+    cj_sfree(priv(ctx)->field_offsets);
 
-    if (priv(ctx)->method_offsets != NULL) {
-        free(priv(ctx)->method_offsets);
-    }
-
-    if (priv(ctx)->field_offsets != NULL) {
-        free(priv(ctx)->field_offsets);
+    if (priv(ctx)->cp_entries != NULL) {
+        for (int i = 0; i < priv(ctx)->cp_entries_len; ++i) {
+            cj_cp_entry_t *entry = priv(ctx)->cp_entries[i];
+            if (entry == NULL) continue;
+            free(entry->data);
+            free(entry);
+        }
+        free(priv(ctx)->cp_entries);
     }
 
     if (priv(ctx)->field_cache != NULL) {
@@ -345,17 +333,27 @@ void cj_class_free(cj_class_t *ctx) {
         }
     }
 
-    free(priv(ctx)->cp_cache);
-    free(priv(ctx));
-    free(ctx);
+    cj_sfree(priv(ctx)->cp_cache);
+    cj_sfree(priv(ctx));
+    cj_sfree(ctx);
 }
 
+bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len) {
+    if (!priv(ctx)->dirty) {
+
+        *len = priv(ctx)->buf_len;
+        *out = malloc(sizeof(unsigned char *) * *len);
+        memcpy(*out, priv(ctx)->buf, *len);
+        return true;
+    }
+    return false;
+}
 
 u2 cj_class_get_field_count(cj_class_t *ctx) {
     return ctx->field_count;
 }
 
-const char *cj_class_get_name(cj_class_t *ctx) {
+const unsigned char *cj_class_get_name(cj_class_t *ctx) {
     u2 offset = priv(ctx)->cp_offsets[priv(ctx)->this_class];
     u2 name_index = cj_ru2(priv(ctx)->buf + offset);
     return cj_cp_get_str(ctx, name_index);
@@ -377,6 +375,8 @@ cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx) {
 
     if (priv(ctx)->field_cache[idx] == NULL) {
 
+        //按需初始化字段，并放入缓存中.
+
         u2 offset = priv(ctx)->field_offsets[idx];
         u2 access_flags = cj_ru2(priv(ctx)->buf + offset);
         u2 name_index = cj_ru2(priv(ctx)->buf + offset + 2);
@@ -396,7 +396,7 @@ cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx) {
     return priv(ctx)->field_cache[idx];
 }
 
-const char *cj_field_get_name(cj_field_t *field) {
+const unsigned char *cj_field_get_name(cj_field_t *field) {
     return field->name;
 }
 
@@ -404,6 +404,12 @@ u2 cj_field_get_access_flags(cj_field_t *field) {
     return field->access_flags;
 }
 
-const char *cj_field_get_descriptor(cj_field_t *field) {
+const unsigned char *cj_field_get_descriptor(cj_field_t *field) {
     return field->descriptor;
+}
+
+void cj_field_set_name(cj_field_t *field, const unsigned char *name) {
+    u2 idx = 0;
+    const unsigned char *new_name = cj_cp_put_str(field->klass, name, strlen((char *) name), &idx);
+    field->name = new_name;
 }

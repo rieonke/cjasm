@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "cjasm.h"
+#include "../src/util.h"
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -47,7 +48,7 @@ void test_check_access_flags(void **state) {
 }
 
 void test_check_class_name(void **state) {
-    const char *name = cj_class_get_name(CTX);
+    const unsigned char *name = cj_class_get_name(CTX);
     assert_string_equal(name, "io/ticup/example/Test");
 }
 
@@ -55,17 +56,25 @@ void test_check_field(void **state) {
 
     cj_field_t *field = cj_class_get_field(CTX, 0);
 
-    const char *name = cj_field_get_name(field);
+    const unsigned char *name = cj_field_get_name(field);
     assert_string_equal(name, "name");
 
-    const char *desc = cj_field_get_descriptor(field);
+    cj_field_set_name(field, "hello");
+
+    assert_string_equal(cj_field_get_name(field), "hello");
+
+    const unsigned char *desc = cj_field_get_descriptor(field);
     assert_string_equal(desc, "Ljava/lang/String;");
+
+    const unsigned char *str = cj_cp_get_str(CTX, priv(CTX)->cp_len);
+    assert_string_equal(str, "hello");
+
 }
 
 void test_get_str(void **ctx) {
 
-    char *str = cj_cp_get_str(*ctx, INIT_IDX);
-    char *str1 = cj_cp_get_str(*ctx, INIT_IDX);
+    const unsigned char *str = cj_cp_get_str(*ctx, INIT_IDX);
+    const unsigned char *str1 = cj_cp_get_str(*ctx, INIT_IDX);
 
     assert_non_null(str);
     assert_string_equal(str, "<init>");

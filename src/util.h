@@ -38,15 +38,28 @@
 
 #endif
 
+//#define btol32 ntohl
+//#define btol16 ntohs
+//#define btol64 ntohll
+
+
 //todo impl windows & linux
 
 #define cj_ri1(ptr) (*(i1 *) (ptr))
-#define cj_ri2(ptr) btol16(*(i2 *) (ptr))
-#define cj_ri4(ptr) btol32(*(i4 *) (ptr))
+#define cj_ri2(ptr) btol16(*(i2 *) (ptr)) /*NOLINT*/
+#define cj_ri4(ptr) btol32(*(i4 *) (ptr)) /*NOLINT*/
 #define cj_ru1(ptr) (*(u1 *) (ptr))
-#define cj_ru2(ptr) btol16(*(u2 *) (ptr))
-#define cj_ru4(ptr) btol32(*(u4 *) (ptr))
-#define cj_ru8(ptr) btol64(*(u8 *) (ptr))
+#define cj_ru2(ptr) btol16(*(u2 *) (ptr)) /*NOLINT*/
+#define cj_ru4(ptr) btol32(*(u4 *) (ptr)) /*NOLINT*/
+#define cj_ru8(ptr) btol64(*(u8 *) (ptr)) /*NOLINT*/
+
+//static inline i1 cj_ri1(const unsigned char *ptr) { return (*(i1 *) (ptr)); }
+//static inline i2 cj_ri2(const unsigned char *ptr) { return btol16(*(i2 *) (ptr));/*NOLINT*/ }
+//static inline i4 cj_ri4(const unsigned char *ptr) { return btol32(*(i4 *) (ptr)); }
+//static inline u1 cj_ru1(const unsigned char *ptr) { return (*(u1 *) (ptr)); }
+//static inline u2 cj_ru2(const unsigned char *ptr) { return btol16(*(u2 *) (ptr)); }
+//static inline u4 cj_ru4(const unsigned char *ptr) { return btol32(*(u4 *) (ptr)); }
+//static inline u8 cj_ru8(const unsigned char *ptr) { return btol64(*(u8 *) (ptr)); }
 
 
 //@formatter:off
@@ -75,7 +88,7 @@ static void print_type(enum cj_cp_type t) {
 
 #define PRINT_TYPE(t) \
     case t: \
-        printf("%s\n", #t);\
+        printf("%s", #t);\
         break;
 
     switch (t) {

@@ -10,10 +10,10 @@
 #include <cmocka.h>
 
 
-#define TEST_CLASS "Test.class"
-#define MAJOR_VERSION 50
+#define TEST_CLASS "io/ticup/example/Test.class"
+#define MAJOR_VERSION 52
 #define MINOR_VERSION 0
-#define INIT_IDX 11
+#define INIT_IDX 29
 
 #define CTX ((cj_class_t*)*state)
 
@@ -46,6 +46,22 @@ void test_check_access_flags(void **state) {
     assert_int_equal(CTX->access_flags, 0x21);
 }
 
+void test_check_class_name(void **state) {
+    const char *name = cj_class_get_name(CTX);
+    assert_string_equal(name, "io/ticup/example/Test");
+}
+
+void test_check_field(void **state) {
+
+    cj_field_t *field = cj_class_get_field(CTX, 0);
+
+    const char *name = cj_field_get_name(field);
+    assert_string_equal(name, "name");
+
+    const char *desc = cj_field_get_descriptor(field);
+    assert_string_equal(desc, "Ljava/lang/String;");
+}
+
 void test_get_str(void **ctx) {
 
     char *str = cj_cp_get_str(*ctx, INIT_IDX);
@@ -65,7 +81,9 @@ int main(void) {
 
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_check_access_flags),
+            cmocka_unit_test(test_check_class_name),
             cmocka_unit_test(test_check_version),
+            cmocka_unit_test(test_check_field),
             cmocka_unit_test(test_get_str),
     };
 

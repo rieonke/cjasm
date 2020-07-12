@@ -16,18 +16,31 @@ set_target_properties(cjasm-object PROPERTIES POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cjasm-static PROPERTIES OUTPUT_NAME cjasm)
 set_target_properties(cjasm-shared PROPERTIES OUTPUT_NAME cjasm)
 
+find_package(Java REQUIRED)
+include(UseJava)
+
+set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.8" "-target" "1.8")
+
+add_jar(test_java_jar test/resources/Test.java
+        OUTPUT_NAME Test
+        ENTRY_POINT Test)
+
+add_custom_command(
+        TARGET test_java_jar POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/io/
+        COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_BINARY_DIR}/Test.jar
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        DEPENDS ${CMAKE_BINARY_DIR}/Test.jar
+        COMMENT "Unpacking Test.jar"
+        VERBATIM
+)
+
 function(cjasm_add_ctest name)
     add_executable(test_${name} test/${name}.c)
     target_link_libraries(test_${name} cjasm-static cmocka)
-    add_dependencies(test_${name} cjasm-static libcmocka)
+    add_dependencies(test_${name} cjasm-static libcmocka test_java_jar)
     add_test(NAME test_${name} COMMAND test_${name})
 endfunction()
-
-file(GLOB TEST_FILES "test/resources/*")
-foreach (tf IN LISTS TEST_FILES)
-    configure_file(${tf} ${CMAKE_BINARY_DIR} COPYONLY)
-    message(STATUS "copy test resource ${tf}")
-endforeach ()
 
 enable_testing()
 cjasm_add_ctest(load_bytecode)

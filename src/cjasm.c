@@ -37,24 +37,25 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     const unsigned char *ptr = priv(ctx)->buf;
     u4 offset = priv(ctx)->header + 6;
 
-    u4 methods_length = 0;
-    u2 interfaces_count = 0;
-    u2 fields_length = 0;
-    u2 attributes_length = 0;
+    u4 methods_count;
+    u2 interfaces_count;
+    u2 fields_count;
+    u2 attributes_count;
     u4 *field_offsets = NULL;
     u4 *method_offsets = NULL;
+    u4 *attr_offsets = NULL;
 
     interfaces_count = cj_ru2(ptr + offset);
     offset += 2 + interfaces_count * 2;
 
-    fields_length = cj_ru2(ptr + offset);
+    fields_count = cj_ru2(ptr + offset);
     offset += 2;
 
-    if (fields_length > 0) {
-        field_offsets = malloc(sizeof(u4) * fields_length);
-        for (int i = 0; i < fields_length; ++i) {
+    if (fields_count > 0) {
+        field_offsets = malloc(sizeof(u4) * fields_count);
+        for (int i = 0; i < fields_count; ++i) {
             field_offsets[i] = offset;
-            attributes_length = cj_ru2(ptr + offset + 6);
+            u4 attributes_length = cj_ru2(ptr + offset + 6);
             offset += 8;
             for (int j = 0; j < attributes_length; ++j) {
                 u4 attribute_length = cj_ru4(ptr + offset + 2);
@@ -63,15 +64,15 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
         }
     }
 
-    methods_length = cj_ru2(ptr + offset);
+    methods_count = cj_ru2(ptr + offset);
     offset += 2;
 
-    if (methods_length > 0) {
-        method_offsets = malloc(sizeof(u4) * methods_length);
-        for (int i = 0; i < methods_length; ++i) {
+    if (methods_count > 0) {
+        method_offsets = malloc(sizeof(u4) * methods_count);
+        for (int i = 0; i < methods_count; ++i) {
             method_offsets[i] = offset;
 
-            attributes_length = cj_ru2(ptr + offset + 6);
+            u4 attributes_length = cj_ru2(ptr + offset + 6);
             offset += 8;
             for (int j = 0; j < attributes_length; ++j) {
                 u4 attribute_length = cj_ru4(ptr + offset + 2);
@@ -80,12 +81,26 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
         }
     }
 
-    ctx->field_count = fields_length;
-    ctx->method_count = methods_length;
+    attributes_count = cj_ru2(ptr + offset);
+    offset += 2;
+    if (attributes_count > 0) {
+        attr_offsets = malloc(sizeof(u4) * attributes_count);
+        for (int i = 0; i < attributes_count; ++i) {
+            attr_offsets[i] = offset;
+
+            u4 attribute_length = cj_ru4(ptr + offset + 2);
+            offset += attribute_length + 6;
+        }
+    }
+
+
+    ctx->field_count = fields_count;
+    ctx->method_count = methods_count;
     ctx->interface_count = interfaces_count;
+    ctx->attr_count = attributes_count;
     priv(ctx)->field_offsets = field_offsets;
     priv(ctx)->method_offsets = method_offsets;
-    priv(ctx)->attribute_offset = offset;
+    priv(ctx)->attr_offsets = attr_offsets;
 
     return true;
 }
@@ -142,7 +157,7 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     u4 cur_cp_offset = 10;
     while (cur_cp_idx < cp_len) {
 
-        int cp_size = 0;
+        int cp_size;
         enum cj_cp_type type = (enum cj_cp_type) cj_ru1(buf + cur_cp_offset++);
 
         *(cp_types + cur_cp_idx) = type;
@@ -257,6 +272,8 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     priv(cls)->field_cache = NULL;
     priv(cls)->method_offsets = NULL;
     priv(cls)->method_cache = NULL;
+    priv(cls)->attr_offsets = NULL;
+    priv(cls)->attr_cache = NULL;
     priv(cls)->buf = malloc(sizeof(char) * len);
     priv(cls)->buf_len = len;
     priv(cls)->cp_entries = NULL;
@@ -308,6 +325,7 @@ void cj_class_free(cj_class_t *ctx) {
     cj_sfree(priv(ctx)->cp_types);
     cj_sfree(priv(ctx)->method_offsets);
     cj_sfree(priv(ctx)->field_offsets);
+    cj_sfree(priv(ctx)->attr_offsets);
 
     if (priv(ctx)->cp_entries != NULL) {
         for (int i = 0; i < priv(ctx)->cp_entries_len; ++i) {
@@ -331,6 +349,13 @@ void cj_class_free(cj_class_t *ctx) {
             cj_sfree(priv(ctx)->method_cache[i]);
         }
         free(priv(ctx)->method_cache);
+    }
+
+    if (priv(ctx)->attr_cache != NULL) {
+        for (int i = 0; i < ctx->attr_count; ++i) {
+            cj_sfree(priv(ctx)->attr_cache[i]);
+        }
+        free(priv(ctx)->attr_cache);
     }
 
     for (int i = 0; i < priv(ctx)->cp_len; ++i) {
@@ -423,7 +448,7 @@ u2 cj_class_get_method_count(cj_class_t *ctx) {
 }
 
 cj_method_t *cj_class_get_method(cj_class_t *ctx, u2 idx) {
-    if (ctx == NULL || priv(ctx) == NULL) {
+    if (ctx == NULL || priv(ctx) == NULL || idx >= ctx->method_count) {
         return NULL;
     }
 
@@ -462,6 +487,75 @@ u2 cj_method_get_access_flags(cj_method_t *method) {
 
 const unsigned char *cj_method_get_descriptor(cj_method_t *method) {
     return method->descriptor;
+}
+
+u2 cj_class_get_attr_count(cj_class_t *ctx) {
+    return ctx->attr_count;
+}
+
+cj_attr_t *cj_class_get_attr(cj_class_t *ctx, u2 idx) {
+    if (ctx == NULL || priv(ctx) == NULL || idx >= ctx->attr_count) {
+        return NULL;
+    }
+    if (priv(ctx)->attr_cache == NULL) {
+        priv(ctx)->attr_cache = calloc(sizeof(cj_attr_t *), ctx->attr_count);
+    }
+
+    if (priv(ctx)->attr_cache[idx] == NULL) {
+        u4 offset = priv(ctx)->attr_offsets[idx];
+
+        u2 attribute_name_index = cj_ru2(priv(ctx)->buf + offset);
+        u4 attribute_length = cj_ru2(priv(ctx)->buf + offset + 2);
+
+        cj_attr_t *attr = malloc(sizeof(cj_attr_t));
+        attr->type_name = cj_cp_get_str(ctx, attribute_name_index);
+        attr->length = attribute_length;
+        attr->type = cj_attr_parse_type(attr->type_name);
+
+        priv(ctx)->attr_cache[idx] = attr;
+    }
+
+    return priv(ctx)->attr_cache[idx];
+}
+
+cj_attr_type_t cj_attr_parse_type(const unsigned char *type_str) {
+#define comp_type(t) \
+    if(strcmp((char*) type_str,#t) == 0) { \
+        return   CJ_ATTR_##t;        \
+    }
+
+    comp_type(AnnotationDefault)
+    comp_type(BootstrapMethods)
+    comp_type(Code)
+    comp_type(ConstantValue)
+    comp_type(Deprecated)
+    comp_type(EnclosingMethod)
+    comp_type(Exceptions)
+    comp_type(InnerClasses)
+    comp_type(LineNumberTable)
+    comp_type(LocalVariableTable)
+    comp_type(LocalVariableTypeTable)
+    comp_type(MethodParameters)
+    comp_type(Module)
+    comp_type(ModuleMainClass)
+    comp_type(ModulePackages)
+    comp_type(NestHost)
+    comp_type(NestMembers)
+    comp_type(RuntimeInvisibleAnnotations)
+    comp_type(RuntimeInvisibleParameterAnnotations)
+    comp_type(RuntimeInvisibleTypeAnnotations)
+    comp_type(RuntimeVisibleAnnotations)
+    comp_type(RuntimeVisibleParameterAnnotations)
+    comp_type(RuntimeVisibleTypeAnnotations)
+    comp_type(Signature)
+    comp_type(SourceDebugExtension)
+    comp_type(SourceFile)
+    comp_type(StackMapTable)
+    comp_type(Synthetic)
+
+    return CJ_ATTR_NONE;
+
+#undef comp_type
 }
 
 

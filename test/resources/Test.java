@@ -2,6 +2,7 @@ package io.ticup.example;
 
 import java.lang.*;
 
+@Deprecated
 public class Test {
 
     private String name;

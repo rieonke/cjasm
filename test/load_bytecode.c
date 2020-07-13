@@ -80,6 +80,22 @@ void test_check_method(void **state) {
 
 }
 
+void test_check_attribute(void **state) {
+
+    cj_attr_t *attr = cj_class_get_attr(CTX, 0);
+    assert_string_equal(attr->type_name, "SourceFile");
+    assert_int_equal(attr->type, CJ_ATTR_SourceFile);
+
+    cj_attr_t *attr1 = cj_class_get_attr(CTX, 1);
+    assert_string_equal(attr1->type_name, "Deprecated");
+    assert_int_equal(attr1->type, CJ_ATTR_Deprecated);
+
+    cj_attr_t *attr2 = cj_class_get_attr(CTX, 2);
+    assert_string_equal(attr2->type_name, "RuntimeVisibleAnnotations");
+    assert_int_equal(attr2->type, CJ_ATTR_RuntimeVisibleAnnotations);
+
+}
+
 void test_get_str(void **ctx) {
 
     const unsigned char *str = cj_cp_get_str(*ctx, INIT_IDX);
@@ -100,6 +116,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_check_access_flags),
             cmocka_unit_test(test_check_class_name),
+            cmocka_unit_test(test_check_attribute),
             cmocka_unit_test(test_check_version),
             cmocka_unit_test(test_check_method),
             cmocka_unit_test(test_check_field),

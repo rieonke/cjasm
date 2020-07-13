@@ -52,7 +52,7 @@
 
 #define CJ_INTERNAL
 #define priv(c) ((cj_class_priv_t*)(c->priv))
-#define cj_sfree(ptr) if(ptr != NULL) free(ptr);
+#define cj_sfree(ptr) if(ptr != NULL) free(ptr)
 
 typedef struct cj_cp_entry_s cj_cp_entry_t;
 struct cj_cp_entry_s {
@@ -85,7 +85,9 @@ struct cj_class_priv_s {
 
     cj_method_t **method_cache;
     u4 *method_offsets;
-    u4 attribute_offset;
+
+    cj_attr_t **attr_cache;
+    u4 *attr_offsets;
 };
 
 //@formatter:off
@@ -135,6 +137,8 @@ static void print_type(enum cj_cp_type t) {
         PRINT_TYPE(CONSTANT_InvokeDynamic)
         PRINT_TYPE(CONSTANT_Module)
         PRINT_TYPE(CONSTANT_Package)
+        default:
+            printf("UNKNOWN TYPE");
     }
 
 #undef PRINT_TYPE

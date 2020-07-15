@@ -109,11 +109,8 @@ struct cj_class_priv_s {
     cj_attribute_set_t **method_attribute_sets;
 
     cj_attribute_set_t *attribute_set;
-
-    u2 ann_count;
-    bool ann_initialized;
-    bool ann_parsed;
-    cj_annotation_t **ann_cache;
+    bool annotation_set_initialized;
+    cj_annotation_set_t *annotation_set;
 };
 
 struct cj_method_priv_s {
@@ -179,5 +176,12 @@ CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr);
 CJ_INTERNAL void cj_method_free(cj_method_t *method);
 
 CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann);
+
+CJ_INTERNAL bool cj_annotation_set_init(cj_class_t *ctx, cj_attribute_set_t * attr_set, cj_annotation_set_t **set);
+
+CJ_INTERNAL cj_annotation_t *cj_annotation_set_get(cj_class_t *ctx, cj_annotation_set_t *set, u2 idx);
+
+CJ_INTERNAL void cj_annotation_set_free(cj_annotation_set_t *set);
+
 
 #endif //CJASM_UTIL_H

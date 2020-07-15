@@ -441,3 +441,66 @@ CJ_INTERNAL void cj_field_set_free(cj_field_set_t *set) {
     cj_sfree(set);
 }
 
+
+cj_annotation_t *cj_annotation_set_get(cj_class_t *ctx, cj_annotation_set_t *set, u2 idx) {
+    if (set == NULL || set->cache == NULL || idx >= set->count) {
+        return NULL;
+    }
+
+    return set->cache[idx];
+}
+
+CJ_INTERNAL bool cj_annotation_set_init(cj_class_t *ctx, cj_attribute_set_t *attr_set, cj_annotation_set_t **set) {
+
+    cj_annotation_set_t *ann_set = NULL;
+    u2 ann_count = 0;
+    for (int i = 0; i < attr_set->count; ++i) {
+        cj_attribute_t *attr = cj_attribute_set_get(ctx, attr_set, i);
+        u4 offset = priva(attr)->offset;
+
+        if (attr == NULL) {
+            continue; //fixme: error handling
+        }
+
+        bool parse = false;
+        bool visible = false;
+        if (attr->type == CJ_ATTR_RuntimeInvisibleAnnotations) {
+            parse = true;
+            visible = false;
+        } else if (attr->type == CJ_ATTR_RuntimeVisibleAnnotations) {
+            parse = true;
+            visible = true;
+        }
+
+        if (parse) {
+            u2 num_annotations = cj_ru2(privc(ctx)->buf + offset + 6);
+            offset += 8;
+
+            if (ann_set == NULL) {
+                ann_set = malloc(sizeof(cj_annotation_set_t));
+                ann_set->count = num_annotations;
+                ann_set->index = 0;
+                ann_set->offsets = malloc(sizeof(u4) * ann_set->count);
+                ann_set->cache = malloc(sizeof(cj_annotation_t *) * ann_set->count);
+            } else {
+                ann_set->count += num_annotations;
+                ann_set->offsets = realloc(ann_set->offsets, sizeof(u4) * ann_set->count);
+                ann_set->cache = realloc(ann_set->cache, sizeof(cj_annotation_t *) * ann_set->count);
+            }
+
+            for (int j = 0; j < num_annotations; ++j) {
+                ann_set->offsets[ann_count] = offset;
+
+                cj_annotation_t *ann = cj_annotation_parse(ctx, privc(ctx)->buf, &offset);
+                ann->visible = visible;
+
+                ann_set->cache[ann_count] = ann;
+                ++ann_count;
+            }
+        }
+    }
+
+    *set = ann_set;
+    return true;
+}
+

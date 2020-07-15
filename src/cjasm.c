@@ -336,9 +336,8 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     privc(cls)->buf_len = len;
     privc(cls)->cp_entries = NULL;
     privc(cls)->cp_entries_len = 0;
-    privc(cls)->ann_cache = NULL;
-    privc(cls)->ann_parsed = false;
-    privc(cls)->ann_initialized = false;
+    privc(cls)->annotation_set = NULL;
+    privc(cls)->annotation_set_initialized = false;
     memcpy((unsigned char *) privc(cls)->buf, buf, len);
 
     cj_parse_offset(cls);
@@ -421,12 +420,8 @@ void cj_class_free(cj_class_t *ctx) {
         }
     }
 
-    if (privc(ctx)->ann_cache != NULL) {
-        for (int i = 0; i < privc(ctx)->ann_count; ++i) {
-            cj_annotation_t *ann = privc(ctx)->ann_cache[i];
-            cj_annotation_free(ann);
-        }
-        cj_sfree(privc(ctx)->ann_cache);
+    if (privc(ctx)->annotation_set != NULL) {
+        cj_annotation_set_free(privc(ctx)->annotation_set);
     }
 
     cj_sfree(privc(ctx)->cp_cache);
@@ -572,32 +567,13 @@ u2 cj_class_get_annotation_count(cj_class_t *ctx) {
 
     if (ctx == NULL || privc(ctx) == NULL || privc(ctx)->attribute_set == NULL) { return 0; }
 
-    if (privc(ctx)->ann_initialized) {
-        return privc(ctx)->ann_count;
+    if (privc(ctx)->annotation_set == NULL && !privc(ctx)->annotation_set_initialized) {
+        bool init = cj_annotation_set_init(ctx, privc(ctx)->attribute_set, &privc(ctx)->annotation_set);
+        privc(ctx)->annotation_set_initialized = init;
     }
 
-    u2 count = cj_class_get_attribute_count(ctx);
-    if (count == 0) return 0;
-
-    cj_attribute_set_t *set = privc(ctx)->attribute_set;
-    u2 ann_count = 0;
-    for (int i = 0; i < count; ++i) {
-        cj_attribute_t *attr = cj_class_get_attribute(ctx, i);
-        if (attr->type == CJ_ATTR_RuntimeVisibleAnnotations || attr->type == CJ_ATTR_RuntimeInvisibleAnnotations ||
-            attr->type == CJ_ATTR_RuntimeVisibleTypeAnnotations || attr->type == CJ_ATTR_RuntimeInvisibleTypeAnnotations
-                ) {
-            u4 offset = set->offsets[i];
-            u2 num_annotations = cj_ru2(privc(ctx)->buf + offset + 6);
-            if (num_annotations == 0) continue;
-
-            ann_count += num_annotations;
-        }
-    }
-
-    privc(ctx)->ann_count = ann_count;
-    privc(ctx)->ann_initialized = true;
-
-    return ann_count;
+    if (privc(ctx)->annotation_set == NULL) return 0;
+    return privc(ctx)->annotation_set->count;
 }
 
 cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
@@ -606,47 +582,11 @@ cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
     u2 attr_count = cj_class_get_attribute_count(ctx);
     if (idx >= attr_count) return NULL;
 
-    u2 ann_count = cj_class_get_annotation_count(ctx);
-    if (idx >= ann_count) return NULL;
-
-    //fixme: 后续通过直接在初始化时，扫描所有的注解偏移地址实现，无需多次扫描
-    if (!privc(ctx)->ann_parsed || privc(ctx)->ann_cache == NULL) {
-
-        cj_attribute_set_t *set = privc(ctx)->attribute_set;
-        privc(ctx)->ann_cache = malloc(sizeof(cj_annotation_t *) * ann_count);
-
-        u2 count = cj_class_get_attribute_count(ctx);
-        if (count == 0) return 0;
-
-        u2 ann_idx = 0;
-        for (int i = 0; i < count; ++i) {
-            cj_attribute_t *attr = cj_class_get_attribute(ctx, i);
-            if (attr->type == CJ_ATTR_RuntimeVisibleAnnotations ||
-                attr->type == CJ_ATTR_RuntimeInvisibleAnnotations) {
-
-                u4 offset = set->offsets[i];
-                u2 num_annotations = cj_ru2(privc(ctx)->buf + offset + 6);
-                if (num_annotations == 0) continue;
-                offset += 8;
-
-                for (int j = 0; j < num_annotations; ++j) {
-                    cj_annotation_t *ann = cj_annotation_parse(ctx, privc(ctx)->buf, &offset);
-                    privc(ctx)->ann_cache[ann_idx++] = ann;
-                }
-
-                ann_count += num_annotations;
-            } else if (attr->type == CJ_ATTR_RuntimeVisibleTypeAnnotations ||
-                       attr->type == CJ_ATTR_RuntimeInvisibleTypeAnnotations) {
-                u4 offset = set->offsets[i];
-                u2 num_annotations = cj_ru2(privc(ctx)->buf + offset + 6);
-                if (num_annotations == 0) continue;
-
-                ann_count += num_annotations;
-            }
-        }
+    if (privc(ctx)->annotation_set == NULL && !privc(ctx)->annotation_set_initialized) {
+        bool init = cj_annotation_set_init(ctx, privc(ctx)->attribute_set, &privc(ctx)->annotation_set);
+        privc(ctx)->annotation_set_initialized = init;
     }
-
-    return privc(ctx)->ann_cache[idx];
+    return cj_annotation_set_get(ctx, privc(ctx)->annotation_set, idx);
 }
 
 u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx) {
@@ -683,60 +623,27 @@ u2 cj_method_get_annotation_count(cj_method_t *method) {
     }
 
     if (privm(method)->annotation_set == NULL && !privm(method)->annotation_set_initialized) {
-        cj_attribute_set_t *attr_set = privm(method)->attribute_set;
-        cj_annotation_set_t *ann_set = NULL;
-        u2 ann_count = 0;
-        for (int i = 0; i < attr_set->count; ++i) {
-            cj_attribute_t *attr = cj_attribute_set_get(method->klass, attr_set, i);
-            u4 offset = priva(attr)->offset;
-
-            if (attr == NULL) {
-                continue; //fixme: error handling
-            }
-
-            bool parse = false;
-            bool visible = false;
-            if (attr->type == CJ_ATTR_RuntimeInvisibleAnnotations) {
-                parse = true;
-                visible = false;
-            } else if (attr->type == CJ_ATTR_RuntimeVisibleAnnotations) {
-                parse = true;
-                visible = true;
-            }
-
-            if (parse) {
-                u2 num_annotations = cj_ru2(privc(method->klass)->buf + offset + 6);
-                offset += 8;
-
-                if (ann_set == NULL) {
-                    ann_set = malloc(sizeof(cj_annotation_set_t));
-                    ann_set->count = num_annotations;
-                    ann_set->index = 0;
-                    ann_set->offsets = malloc(sizeof(u4) * ann_set->count);
-                    ann_set->cache = malloc(sizeof(cj_annotation_t *) * ann_set->count);
-                } else {
-                    ann_set->count += num_annotations;
-                    ann_set->offsets = realloc(ann_set->offsets, sizeof(u4) * ann_set->count);
-                    ann_set->cache = realloc(ann_set->cache, sizeof(cj_annotation_t *) * ann_set->count);
-                }
-
-                for (int j = 0; j < num_annotations; ++j) {
-                    ann_set->offsets[ann_count] = offset;
-
-                    cj_annotation_t *ann = cj_annotation_parse(method->klass, privc(method->klass)->buf, &offset);
-                    ann->visible = visible;
-
-                    ann_set->cache[ann_count] = ann;
-                    ++ann_count;
-                }
-            }
-        }
-        privm(method)->annotation_set = ann_set;
-        privm(method)->annotation_set_initialized = true;
+        bool init = cj_annotation_set_init(method->klass, privm(method)->attribute_set, &privm(method)->annotation_set);
+        privm(method)->annotation_set_initialized = init;
     }
 
     if (privm(method)->annotation_set == NULL) return 0;
     return privm(method)->annotation_set->count;
+}
+
+cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx) {
+    if (method == NULL ||
+        privm(method) == NULL ||
+        method->klass == NULL) {
+        return NULL;
+    }
+
+    if (privm(method)->annotation_set == NULL && !privm(method)->annotation_set_initialized) {
+        bool init = cj_annotation_set_init(method->klass, privm(method)->attribute_set, &privm(method)->annotation_set);
+        privm(method)->annotation_set_initialized = init;
+    }
+
+    return cj_annotation_set_get(method->klass, privm(method)->annotation_set, idx);
 }
 
 

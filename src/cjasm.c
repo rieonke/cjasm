@@ -377,7 +377,21 @@ void cj_class_free(cj_class_t *ctx) {
     cj_sfree(privc(ctx)->method_offsets);
     cj_sfree(privc(ctx)->field_offsets);
 
-//    cj_sfree(privc(ctx)->attr_offsets); //fixme: free_attribute_set
+    cj_attribute_set_free(privc(ctx)->attribute_set);
+    if (privc(ctx)->method_attribute_sets != NULL) {
+        for (int i = 0; i < ctx->method_count; ++i) {
+            cj_attribute_set_free(privc(ctx)->method_attribute_sets[i]);
+        }
+        cj_sfree(privc(ctx)->method_attribute_sets);
+    }
+
+    if (privc(ctx)->field_attribute_sets != NULL) {
+
+        for (int i = 0; i < ctx->field_count; ++i) {
+            cj_attribute_set_free(privc(ctx)->field_attribute_sets[i]);
+        }
+        cj_sfree(privc(ctx)->field_attribute_sets);
+    }
 
     if (privc(ctx)->cp_entries != NULL) {
         for (int i = 0; i < privc(ctx)->cp_entries_len; ++i) {
@@ -398,7 +412,7 @@ void cj_class_free(cj_class_t *ctx) {
 
     if (privc(ctx)->method_cache != NULL) {
         for (int i = 0; i < ctx->method_count; ++i) {
-            cj_sfree(privc(ctx)->method_cache[i]);
+            cj_method_free(privc(ctx)->method_cache[i]);
         }
         free(privc(ctx)->method_cache);
     }
@@ -413,14 +427,7 @@ void cj_class_free(cj_class_t *ctx) {
     if (privc(ctx)->ann_cache != NULL) {
         for (int i = 0; i < privc(ctx)->ann_count; ++i) {
             cj_annotation_t *ann = privc(ctx)->ann_cache[i];
-            if (ann->attributes_count > 0 && ann->attributes != NULL) {
-                for (int j = 0; j < ann->attributes_count; ++j) {
-                    cj_element_pair_t *pair = ann->attributes[j];
-                    cj_sfree(pair->value);
-                    cj_sfree(pair); //fixme free element
-                }
-            }
-            cj_sfree(ann);// fixme: free element
+            cj_annotation_free(ann);
         }
         cj_sfree(privc(ctx)->ann_cache);
     }

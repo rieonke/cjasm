@@ -233,7 +233,7 @@ CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets
 
 }
 
-cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_set_t *set, u2 idx) {
+CJ_INTERNAL cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_set_t *set, u2 idx) {
 
     if (ctx == NULL || privc(ctx) == NULL || set == NULL || set->count <= idx) {
         return NULL;
@@ -261,3 +261,64 @@ cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_set_t *set, u
     return set->cache[idx];
 }
 
+CJ_INTERNAL void cj_attribute_set_free(cj_attribute_set_t *set) {
+
+    if (set == NULL) return;
+    cj_sfree(set->offsets);
+
+    if (set->cache != NULL) {
+        for (int i = 0; i < set->count; ++i) {
+            cj_attribute_free(set->cache[i]);
+        }
+        cj_sfree(set->cache);
+    }
+    free(set);
+}
+
+CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr) {
+    cj_sfree(attr);
+}
+
+CJ_INTERNAL void cj_method_free(cj_method_t *method) {
+    if (method == NULL) return;
+    cj_sfree(privm(method));
+    cj_sfree(method);
+}
+
+
+CJ_INTERNAL void cj_element_free(cj_element_t *element) {
+    if (element == NULL) return;
+    switch (element->tag) {
+        case '@': /*annotation*/
+            cj_annotation_free(element->annotation);
+            break;
+        case '[': /*array*/
+            if (element->elements != NULL) {
+                for (int i = 0; i < element->element_count; ++i) {
+                    cj_element_free(element->elements[i]);
+                }
+            }
+        default:
+            break;
+    }
+
+    cj_sfree(element);
+}
+
+CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann) {
+    if (ann == NULL) return;
+
+    if (ann->attributes != NULL) {
+
+        for (int i = 0; i < ann->attributes_count; ++i) {
+            cj_element_pair_t *pair = ann->attributes[i];
+            if (pair == NULL) continue;
+            cj_element_free(pair->value);
+            cj_sfree(pair);
+        }
+        cj_sfree(ann->attributes);
+    }
+    cj_sfree(ann);
+
+
+}

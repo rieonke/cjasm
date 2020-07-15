@@ -144,4 +144,12 @@ CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets
 
 CJ_INTERNAL cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_set_t *set, u2 idx);
 
+CJ_INTERNAL void cj_attribute_set_free(cj_attribute_set_t *set);
+
+CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr);
+
+CJ_INTERNAL void cj_method_free(cj_method_t *method);
+
+CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann);
+
 #endif //CJASM_UTIL_H

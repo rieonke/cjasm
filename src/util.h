@@ -59,6 +59,8 @@ typedef struct cj_cp_entry_s cj_cp_entry_t;
 typedef struct cj_class_priv_s cj_class_priv_t;
 typedef struct cj_method_priv_s cj_method_priv_t;
 typedef struct cj_attribute_set_s cj_attribute_set_t;
+typedef struct cj_method_set_s cj_method_set_t;
+typedef struct cj_field_set_s cj_field_set_t;
 
 struct cj_cp_entry_s {
     u1 tag;
@@ -72,6 +74,21 @@ struct cj_attribute_set_s {
     u4 *offsets;
     cj_attribute_t **cache;
 };
+
+struct cj_method_set_s {
+    u2 index;
+    u2 count;
+    u4 *offsets;
+    cj_method_t **cache;
+};
+
+struct cj_field_set_s {
+    u2 index;
+    u2 count;
+    u4 *offsets;
+    cj_field_t **cache;
+};
+
 
 struct cj_class_priv_s {
     bool dirty;
@@ -90,13 +107,10 @@ struct cj_class_priv_s {
     u2 this_class;
     u2 super_class;
 
-    cj_field_t **field_cache;
-    u4 *field_offsets;
+    cj_field_set_t *field_set;
     cj_attribute_set_t **field_attribute_sets;
 
-
-    cj_method_t **method_cache;
-    u4 *method_offsets;
+    cj_method_set_t *method_set;
     cj_attribute_set_t **method_attribute_sets;
 
     cj_attribute_set_t *attribute_set;
@@ -145,6 +159,15 @@ CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets
 CJ_INTERNAL cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_set_t *set, u2 idx);
 
 CJ_INTERNAL void cj_attribute_set_free(cj_attribute_set_t *set);
+
+CJ_INTERNAL cj_method_t *cj_method_set_get(cj_class_t *ctx, cj_method_set_t *set, u2 idx);
+
+CJ_INTERNAL void cj_method_set_free(cj_method_set_t *set);
+
+CJ_INTERNAL cj_field_t *cj_field_set_get(cj_class_t *ctx, cj_field_set_t *set, u2 idx);
+
+CJ_INTERNAL void cj_field_set_free(cj_field_set_t *set);
+
 
 CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr);
 

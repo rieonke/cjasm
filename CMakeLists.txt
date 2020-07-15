@@ -8,7 +8,7 @@ include(third_party/ThirdParty.cmake)
 
 include_directories(include)
 
-add_library(cjasm-object OBJECT include/cjasm.h src/cjasm.c src/util.h)
+add_library(cjasm-object OBJECT include/cjasm.h src/cjasm.c src/util.h src/util.c)
 add_library(cjasm-shared SHARED $<TARGET_OBJECTS:cjasm-object>)
 add_library(cjasm-static STATIC $<TARGET_OBJECTS:cjasm-object>)
 

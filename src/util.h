@@ -53,6 +53,7 @@
 #define CJ_INTERNAL
 #define privc(c) ((cj_class_priv_t*)(c->priv))
 #define privm(m) ((cj_method_priv_t*)(m->priv))
+#define priva(a) ((cj_annotation_priv_t*)(a->priv))
 #define cj_sfree(ptr) if(ptr != NULL) free(ptr)
 
 typedef struct cj_cp_entry_s cj_cp_entry_t;
@@ -61,6 +62,9 @@ typedef struct cj_method_priv_s cj_method_priv_t;
 typedef struct cj_attribute_set_s cj_attribute_set_t;
 typedef struct cj_method_set_s cj_method_set_t;
 typedef struct cj_field_set_s cj_field_set_t;
+typedef struct cj_annotation_set_s cj_annotation_set_t;
+typedef struct cj_annotation_priv_s cj_annotation_priv_t;
+typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 
 struct cj_cp_entry_s {
     u1 tag;
@@ -68,27 +72,18 @@ struct cj_cp_entry_s {
     unsigned char *data;
 };
 
-struct cj_attribute_set_s {
-    u2 index;
-    u2 count;
-    u4 *offsets;
-    cj_attribute_t **cache;
+#define CJ_CACHEABLE_SET(name, type) \
+struct name {                        \
+    u2 index;                        \
+    u2 count;                        \
+    u4 *offsets;                     \
+    type **cache;                    \
 };
 
-struct cj_method_set_s {
-    u2 index;
-    u2 count;
-    u4 *offsets;
-    cj_method_t **cache;
-};
-
-struct cj_field_set_s {
-    u2 index;
-    u2 count;
-    u4 *offsets;
-    cj_field_t **cache;
-};
-
+CJ_CACHEABLE_SET(cj_annotation_set_s, cj_annotation_t)
+CJ_CACHEABLE_SET(cj_attribute_set_s, cj_attribute_t)
+CJ_CACHEABLE_SET(cj_method_set_s, cj_method_t)
+CJ_CACHEABLE_SET(cj_field_set_s, cj_field_t)
 
 struct cj_class_priv_s {
     bool dirty;
@@ -123,7 +118,17 @@ struct cj_class_priv_s {
 
 struct cj_method_priv_s {
     u4 offset;
+    bool annotation_set_initialized;
+    cj_annotation_set_t *annotation_set;
     cj_attribute_set_t *attribute_set;
+};
+
+struct cj_attribute_priv_s {
+    u4 offset;
+};
+
+struct cj_annotation_priv_s {
+    u4 offset;
 };
 
 //@formatter:off

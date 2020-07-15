@@ -81,6 +81,8 @@ void test_check_method(void **state) {
     cj_attribute_t *attr = cj_method_get_attribute(method, 0);
     assert_non_null(attr);
 
+    u2 count = cj_method_get_annotation_count(method);
+
 
 }
 

@@ -1,10 +1,18 @@
 package io.ticup.example;
 
-import java.lang.*;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 @interface Ann {
-    String  name();
+    String name();
+
     double balance();
+}
+
+
+@Retention(RetentionPolicy.RUNTIME)
+@interface VisibleAnn {
+    String[] types();
 }
 
 @Deprecated
@@ -16,6 +24,12 @@ public class Test {
     private int age;
     private Double balance;
 
+
+    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
+    @VisibleAnn(types= {"v_hello_1", "v_hello_2"})
+    public Test() {
+
+    }
 
     public void sayBye() {
         long var1 = System.currentTimeMillis();

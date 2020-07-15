@@ -194,6 +194,7 @@ CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf
             }
             ev->element_count = ev_count;
             ev->elements = element_values;
+            break;
         }
         default:
             cj_sfree(ev);
@@ -250,10 +251,14 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_s
         u2 attribute_name_index = cj_ru2(privc(ctx)->buf + offset);
         u4 attribute_length = cj_ru4(privc(ctx)->buf + offset + 2);
 
+        cj_attribute_priv_t *priv = malloc(sizeof(cj_attribute_priv_t));
+        priv->offset = offset;
+
         cj_attribute_t *attr = malloc(sizeof(cj_attribute_t));
         attr->type_name = cj_cp_get_str(ctx, attribute_name_index);
         attr->length = attribute_length;
         attr->type = cj_attr_parse_type(attr->type_name);
+        attr->priv = priv;
 
         set->cache[idx] = attr;
     }
@@ -276,11 +281,34 @@ CJ_INTERNAL void cj_attribute_set_free(cj_attribute_set_t *set) {
 }
 
 CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr) {
+    if (attr == NULL) return;
+    if (priva(attr) != NULL) {
+        cj_sfree(priva(attr));
+    }
     cj_sfree(attr);
+}
+
+CJ_INTERNAL void cj_annotation_set_free(cj_annotation_set_t *set) {
+    if (set == NULL) return;
+    if (set->cache != NULL) {
+        for (int i = 0; i < set->count; ++i) {
+            cj_annotation_free(set->cache[i]);
+        }
+        cj_sfree(set->cache);
+    }
+
+    cj_sfree(set->offsets);
+    cj_sfree(set);
 }
 
 CJ_INTERNAL void cj_method_free(cj_method_t *method) {
     if (method == NULL) return;
+    if (privm(method) != NULL && privm(method)->annotation_set != NULL) {
+        cj_annotation_set_free(privm(method)->annotation_set);
+    }
+
+    //因为方法的attribute_set在class中被释放，所以在此处不再释放
+
     cj_sfree(privm(method));
     cj_sfree(method);
 }
@@ -297,6 +325,7 @@ CJ_INTERNAL void cj_element_free(cj_element_t *element) {
                 for (int i = 0; i < element->element_count; ++i) {
                     cj_element_free(element->elements[i]);
                 }
+                cj_sfree(element->elements);
             }
         default:
             break;
@@ -348,6 +377,8 @@ CJ_INTERNAL cj_method_t *cj_method_set_get(cj_class_t *ctx, cj_method_set_t *set
         method->priv = calloc(sizeof(cj_method_priv_t), 1);
         privm(method)->offset = offset;
         privm(method)->attribute_set = privc(ctx)->method_attribute_sets[idx];
+        privm(method)->annotation_set = NULL;
+        privm(method)->annotation_set_initialized = false;
 
         set->cache[idx] = method;
     }

@@ -135,10 +135,12 @@ struct cj_attribute_s {
     const_str type_name;
     u4 length;
     cj_attr_type_t type;
+    cj_pointer priv;
 };
 
 struct cj_annotation_s {
     const_str type_name;
+    bool visible;
     u2 attributes_count;
     cj_element_pair_t **attributes;
 };
@@ -375,6 +377,23 @@ u2 cj_method_get_attribute_count(cj_method_t *method);
  * @return 属性，如果不存在该索引值时，返回NULL.
  */
 cj_attribute_t *cj_method_get_attribute(cj_method_t *method, u2 idx);
+
+
+/**
+ * 获取方法的注解数量.
+ * @param method 方法
+ * @return 注解数量
+ */
+u2 cj_method_get_annotation_count(cj_method_t *method);
+
+/**
+ * 根据索引值获取方法的注解.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @param idx 索引
+ * @return 属性，如果不存在该索引值时，返回NULL.
+ */
+cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx);
 
 /**
  * 根据属性名解析属性类型.

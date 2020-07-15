@@ -2,7 +2,13 @@ package io.ticup.example;
 
 import java.lang.*;
 
+@interface Ann {
+    String  name();
+    double balance();
+}
+
 @Deprecated
+@Ann(name = "hello", balance = 8.89)
 public class Test {
 
     private String name;

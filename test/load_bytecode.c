@@ -59,40 +59,53 @@ void test_check_field(void **state) {
     const unsigned char *name = cj_field_get_name(field);
     assert_string_equal(name, "name");
 
-    cj_field_set_name(field, (const unsigned char *) "hello");
+    cj_field_set_name(field, (const unsigned char *) "__reserved__test__hello");
 
-    assert_string_equal(cj_field_get_name(field), "hello");
+    assert_string_equal(cj_field_get_name(field), "__reserved__test__hello");
 
     const unsigned char *desc = cj_field_get_descriptor(field);
     assert_string_equal(desc, "Ljava/lang/String;");
 
-    const unsigned char *str = cj_cp_get_str(CTX, priv(CTX)->cp_len);
-    assert_string_equal(str, "hello");
+    const unsigned char *str = cj_cp_get_str(CTX, privc(CTX)->cp_len);
+    assert_string_equal(str, "__reserved__test__hello");
 
 }
 
 void test_check_method(void **state) {
 
+    u2 i = cj_class_get_method_count(CTX);
     cj_method_t *method = cj_class_get_method(CTX, 0);
     const unsigned char *name = cj_method_get_name(method);
     assert_string_equal(name, "<init>");
+
+    cj_attribute_t *attr = cj_method_get_attribute(method, 0);
+    assert_non_null(attr);
 
 
 }
 
 void test_check_attribute(void **state) {
 
-    cj_attr_t *attr = cj_class_get_attr(CTX, 0);
+    cj_attribute_t *attr = cj_class_get_attribute(CTX, 0);
     assert_string_equal(attr->type_name, "SourceFile");
     assert_int_equal(attr->type, CJ_ATTR_SourceFile);
 
-    cj_attr_t *attr1 = cj_class_get_attr(CTX, 1);
+    cj_attribute_t *attr1 = cj_class_get_attribute(CTX, 1);
     assert_string_equal(attr1->type_name, "Deprecated");
     assert_int_equal(attr1->type, CJ_ATTR_Deprecated);
 
-    cj_attr_t *attr2 = cj_class_get_attr(CTX, 2);
+    cj_attribute_t *attr2 = cj_class_get_attribute(CTX, 2);
     assert_string_equal(attr2->type_name, "RuntimeVisibleAnnotations");
     assert_int_equal(attr2->type, CJ_ATTR_RuntimeVisibleAnnotations);
+
+}
+
+void test_check_annotation(void **state) {
+
+    u2 count = cj_class_get_annotation_count(CTX);
+    assert(count > 0);
+    cj_annotation_t *annotation = cj_class_get_annotation(CTX, 0);
+    assert(annotation != NULL);
 
 }
 
@@ -116,6 +129,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_check_access_flags),
             cmocka_unit_test(test_check_class_name),
+            cmocka_unit_test(test_check_annotation),
             cmocka_unit_test(test_check_attribute),
             cmocka_unit_test(test_check_version),
             cmocka_unit_test(test_check_method),

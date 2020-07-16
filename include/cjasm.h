@@ -179,7 +179,6 @@ struct cj_element_s {
     //@formatter:on
 };
 
-
 /**
  * read file content into char buffer.
  * @param path file path

@@ -44,7 +44,7 @@ void test_check_version(void **state) {
 }
 
 void test_check_access_flags(void **state) {
-    assert_int_equal(CTX->access_flags, 0x21);
+    assert_int_equal(CTX->access_flags, 0x31);
 }
 
 void test_check_class_name(void **state) {
@@ -87,6 +87,14 @@ void test_check_method(void **state) {
     cj_annotation_t *ann = cj_method_get_annotation(method, 0);
     assert_non_null(ann);
 
+
+    cj_code_t *code = cj_method_get_code(method);
+    assert_non_null(code);
+
+    cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
+    assert_non_null(descriptor);
+
+
 }
 
 void test_check_attribute(void **state) {
@@ -128,6 +136,22 @@ void test_get_str(void **ctx) {
 
 }
 
+void test_descriptor_parse(void **state) {
+
+    char *desc = "(IDLjava/lang/Thread;)Ljava/lang/Object;";
+    cj_descriptor_t *descriptor = cj_descriptor_parse((const_str) desc, strlen(desc));
+    assert_non_null(descriptor);
+
+    for (int i = 0; i < descriptor->parameter_count; ++i) {
+        printf("%s\n", descriptor->parameter_types[i]);
+        cj_sfree(descriptor->parameter_types[i]);
+    }
+    cj_sfree(descriptor->parameter_types);
+    cj_sfree(descriptor->type);
+    cj_sfree(descriptor);
+
+}
+
 
 int main(void) {
 
@@ -139,6 +163,7 @@ int main(void) {
             cmocka_unit_test(test_check_version),
             cmocka_unit_test(test_check_method),
             cmocka_unit_test(test_check_field),
+            cmocka_unit_test(test_descriptor_parse),
             cmocka_unit_test(test_get_str),
     };
 

@@ -504,10 +504,6 @@ u2 cj_method_get_access_flags(cj_method_t *method) {
     return method->access_flags;
 }
 
-const_str cj_method_get_descriptor(cj_method_t *method) {
-    return method->descriptor;
-}
-
 u2 cj_class_get_attribute_count(cj_class_t *ctx) {
     return ctx->attr_count;
 }
@@ -644,6 +640,82 @@ cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx) {
     }
 
     return cj_annotation_set_get(method->klass, privm(method)->annotation_set, idx);
+}
+
+cj_code_t *cj_method_get_code(cj_method_t *method) {
+
+    if (method == NULL ||
+        method->klass == NULL ||
+        privm(method) == NULL) {
+        return NULL;
+    }
+    if (privm(method)->code != NULL) {
+        return privm(method)->code;
+    }
+
+    /*
+     *
+     * Code_attribute {
+     *      u2 attribute_name_index;
+     *      u4 attribute_length;
+     *      u2 max_stack;
+     *      u2 max_locals;
+     *      u4 code_length;
+     *      u1 code[code_length];
+     *      u2 exception_table_length;
+     *      {   u2 start_pc;
+     *          u2 end_pc;
+     *          u2 handler_pc;
+     *          u2 catch_type;
+     *      } exception_table[exception_table_length];
+     *      u2 attributes_count;
+     *      attribute_info attributes[attributes_count];
+     *  }
+     *
+     */
+    u4 offset = 0;
+    cj_class_t *ctx = method->klass;
+
+    for (int i = 0; i < privm(method)->attribute_set->count; ++i) {
+        cj_attribute_t *attr = cj_attribute_set_get(method->klass, privm(method)->attribute_set, i);
+        if (attr->type == CJ_ATTR_Code) {
+            offset = priva(attr)->offset;
+        }
+    }
+
+    if (offset == 0) return NULL;
+    u2 max_stack = cj_ru2(privc(ctx)->buf + offset + 6);
+    u2 max_locals = cj_ru2(privc(ctx)->buf + offset + 8);
+    u4 code_length = cj_ru4(privc(ctx)->buf + offset + 10);
+    offset += 12;
+
+    cj_code_t *code = malloc(sizeof(cj_code_t));
+    code->offset = offset;
+    code->length = code_length;
+    code->max_stack = max_stack;
+    code->max_locals = max_locals;
+
+    privm(method)->code = code;
+
+    return code;
+}
+
+cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method) {
+    if (method == NULL || method->descriptor == NULL || privm(method) == NULL) return NULL;
+    if (privm(method)->descriptor == NULL) {
+        privm(method)->descriptor = cj_descriptor_parse(method->descriptor, strlen((char *) method->descriptor));
+    }
+    return privm(method)->descriptor;
+}
+
+const_str cj_method_get_return_type(cj_method_t *method) {
+    cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
+    return descriptor->type;
+}
+
+u2 cj_method_get_parameter_count(cj_method_t *method) {
+    cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
+    return descriptor->parameter_count;
 }
 
 

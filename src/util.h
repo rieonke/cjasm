@@ -54,11 +54,13 @@
 #define privc(c) ((cj_class_priv_t*)(c->priv))
 #define privm(m) ((cj_method_priv_t*)(m->priv))
 #define priva(a) ((cj_attribute_priv_t*)(a->priv))
+#define privf(f) ((cj_field_priv_t*)(f->priv))
 #define cj_sfree(ptr) if(ptr != NULL) free(ptr)
 
 typedef struct cj_cp_entry_s cj_cp_entry_t;
 typedef struct cj_class_priv_s cj_class_priv_t;
 typedef struct cj_method_priv_s cj_method_priv_t;
+typedef struct cj_field_priv_s cj_field_priv_t;
 typedef struct cj_attribute_set_s cj_attribute_set_t;
 typedef struct cj_method_set_s cj_method_set_t;
 typedef struct cj_field_set_s cj_field_set_t;
@@ -122,6 +124,13 @@ struct cj_method_priv_s {
     cj_descriptor_t *descriptor;
 };
 
+struct cj_field_priv_s {
+    u4 offset;
+    bool annotation_set_initialized;
+    cj_annotation_set_t *annotation_set;
+    cj_attribute_set_t *attribute_set;
+};
+
 struct cj_attribute_priv_s {
     u4 offset;
 };
@@ -172,6 +181,7 @@ CJ_INTERNAL cj_field_t *cj_field_set_get(cj_class_t *ctx, cj_field_set_t *set, u
 
 CJ_INTERNAL void cj_field_set_free(cj_field_set_t *set);
 
+CJ_INTERNAL void cj_field_free(cj_field_t *field);
 
 CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr);
 

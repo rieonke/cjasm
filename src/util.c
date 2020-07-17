@@ -322,6 +322,17 @@ CJ_INTERNAL void cj_method_free(cj_method_t *method) {
 }
 
 
+CJ_INTERNAL void cj_field_free(cj_field_t *field) {
+    if (field == NULL) {
+        return;
+    }
+    if (privf(field) != NULL && privf(field)->annotation_set != NULL) {
+        cj_annotation_set_free(privf(field)->annotation_set);
+    }
+    cj_sfree(privf(field));
+    cj_sfree(field);
+}
+
 CJ_INTERNAL void cj_element_free(cj_element_t *element) {
     if (element == NULL) return;
     switch (element->tag) {
@@ -430,6 +441,11 @@ CJ_INTERNAL cj_field_t *cj_field_set_get(cj_class_t *ctx, cj_field_set_t *set, u
         field->name = cj_cp_get_str(ctx, name_index);
         field->descriptor = cj_cp_get_str(ctx, descriptor_index);
         field->attribute_count = attributes_count;
+        field->priv = calloc(1, sizeof(cj_field_priv_t));
+        privf(field)->offset = offset;
+        privf(field)->attribute_set = privc(ctx)->field_attribute_sets[idx];
+        privf(field)->annotation_set = NULL;
+        privf(field)->annotation_set_initialized = false;
 
         set->cache[idx] = field;
     }
@@ -444,7 +460,7 @@ CJ_INTERNAL void cj_field_set_free(cj_field_set_t *set) {
     cj_sfree(set->offsets);
     if (set->cache != NULL) {
         for (int i = 0; i < set->count; ++i) {
-            cj_sfree(set->cache[i]);
+            cj_field_free(set->cache[i]);
         }
     }
     cj_sfree(set->cache);

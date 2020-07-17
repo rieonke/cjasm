@@ -474,6 +474,20 @@ const_str cj_field_get_descriptor(cj_field_t *field) {
     return field->descriptor;
 }
 
+u2 cj_field_get_attribute_count(cj_field_t *field) {
+  return field->attribute_count;
+}
+
+cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx) {
+  if (field->klass == NULL ||
+      field->attribute_count <= 0 ||
+      privf(field)->attribute_set == NULL ||
+      idx >= privf(field)->annotation_set->count){
+    return NULL;
+  }
+  return cj_attribute_set_get(field->klass, privf(field)->attribute_set, idx);
+}
+
 void cj_field_set_name(cj_field_t *field, const_str name) {
     u2 idx = 0;
     const_str new_name = cj_cp_put_str(field->klass, name, strlen((char *) name), &idx);

@@ -69,6 +69,11 @@ void test_check_field(void **state) {
     const unsigned char *str = cj_cp_get_str(CTX, privc(CTX)->cp_len);
     assert_string_equal(str, "__reserved__test__hello");
 
+    for (int i = 0; i < cj_field_get_attribute_count(field); ++i) {
+        cj_attribute_t *attr = cj_field_get_attribute(field, i);
+        assert_non_null(attr);
+    }
+
 }
 
 void test_check_method(void **state) {

@@ -2,13 +2,14 @@ cmake_minimum_required(VERSION 3.0)
 project(cjasm C)
 
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Werror -pedantic -pedantic-errors")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCJ_DEBUG")
 
 include(third_party/ThirdParty.cmake)
 
 include_directories(include)
 
-add_library(cjasm-object OBJECT include/cjasm.h src/cjasm.c src/util.h src/util.c)
+add_library(cjasm-object OBJECT include/cjasm.h src/cjasm.c src/util.h src/util.c src/method.c)
 add_library(cjasm-shared SHARED $<TARGET_OBJECTS:cjasm-object>)
 add_library(cjasm-static STATIC $<TARGET_OBJECTS:cjasm-object>)
 

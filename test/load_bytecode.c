@@ -14,7 +14,7 @@
 #define TEST_CLASS "io/ticup/example/Test.class"
 #define MAJOR_VERSION 52
 #define MINOR_VERSION 0
-#define INIT_IDX 29
+#define INIT_IDX 34
 
 #define CTX ((cj_class_t*)*state)
 
@@ -157,6 +157,16 @@ void test_descriptor_parse(void **state) {
 
 }
 
+void test_check_cj_cp_put_str(void **state) {
+    u2 index = 0;
+    const unsigned char *name = cj_cp_put_str(CTX,  (unsigned char *)"_test_entry_1",  14, &index);
+
+    u2 index1 = 0;
+    const unsigned char *name1 = cj_cp_put_str(CTX,  (unsigned char *)"_test_entry_1",  14, &index1);
+
+    assert_int_equal(index, index1);
+    assert_string_equal(name1, "_test_entry_1");
+}
 
 int main(void) {
 
@@ -170,6 +180,7 @@ int main(void) {
             cmocka_unit_test(test_check_field),
             cmocka_unit_test(test_descriptor_parse),
             cmocka_unit_test(test_get_str),
+            cmocka_unit_test(test_check_cj_cp_put_str),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

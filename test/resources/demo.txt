@@ -1,0 +1,45 @@
+inject for com.example.Test
+
+declare $a as Long
+
+on method * when calling javax.sql.DataSource.getConnection:()Ljava/sql/Connection;
+
+    begin java
+        @if in static method
+            System.out.println("Get database connection from " + $class);
+        @else
+            System.out.println("Get database connection from " + $this.getClass());
+        @end
+    end
+
+end
+
+on method demo [descriptor] entry:
+    declare $c as String
+
+    begin inline asm
+        aload_0 //or aload $this
+        invokevirtual java/lang/Object.getClass:()Ljava/lang/Class;
+        invokevirtual java/lang/Class.getName:()Ljava/lang/String;
+        astore $c
+        getstatic java/lang/System.out:Ljava/io/PrintStream;
+        aload $c
+        invokevirtual java/io/PrintStream.println:(Ljava/lang/String;)V
+    end
+
+    begin java
+        $a  = System.currentTimeMillis();
+        System.out.println("invoke demo method");
+    end
+
+end
+
+
+on method demo [descriptor] exit:
+
+    begin java
+        System.out.println("Execution time: " + (System.currentTimeMillis() - $a));
+    end
+
+
+end

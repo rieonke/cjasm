@@ -41,7 +41,9 @@
 
 
 //todo impl windows & linux
-
+/**
+ * 从字节码里读取N个字节，并且将大端转化为本地的大小端表示
+ */
 #define cj_ri1(ptr) (*(i1 *) (ptr))
 #define cj_ri2(ptr) btol16(*(i2 *) (ptr)) /*NOLINT*/
 #define cj_ri4(ptr) btol32(*(i4 *) (ptr)) /*NOLINT*/
@@ -50,6 +52,9 @@
 #define cj_ru4(ptr) btol32(*(u4 *) (ptr)) /*NOLINT*/
 #define cj_ru8(ptr) btol64(*(u8 *) (ptr)) /*NOLINT*/
 
+/**
+ * 用来表示内部使用的函数，不是公开的方法，不建议被外部调用，不保证向后兼容性
+ */
 #define CJ_INTERNAL
 #define privc(c) ((cj_class_priv_t*)(c->priv))
 #define privm(m) ((cj_method_priv_t*)(m->priv))
@@ -57,6 +62,9 @@
 #define privf(f) ((cj_field_priv_t*)(f->priv))
 #define cj_sfree(ptr) if(ptr != NULL) free(ptr)
 
+/**
+ * 内部私有类型，用于存放过程变量，不可以被外部调用，不保证向后兼容性
+ */
 typedef struct cj_cp_entry_s cj_cp_entry_t;
 typedef struct cj_class_priv_s cj_class_priv_t;
 typedef struct cj_method_priv_s cj_method_priv_t;
@@ -90,17 +98,26 @@ CJ_CACHEABLE_SET(cj_method_set_s, cj_method_t)
 CJ_CACHEABLE_SET(cj_field_set_s, cj_field_t)
 
 struct cj_class_priv_s {
+    //是否被改过标记
     bool dirty;
+    //类的字节码
     unsigned char const *buf;
     size_t buf_len;
 
+    //此类的起始偏移量（常量池之后的起始位置）
     u4 header;
 
+    //常量池大小
     u2 cp_len;
+    //常量类型数组
     u1 *cp_types;
+    //常量池偏移量数组
     u2 *cp_offsets;
+    //
     unsigned char **cp_cache;
+    //
     cj_cp_entry_t **cp_entries;
+
     u2 cp_entries_len;
 
     u2 this_class;
@@ -187,6 +204,9 @@ struct cj_insn_s {
 };
 
 //@formatter:off
+/**
+ * 常量池的类型
+ */
 enum cj_cp_type {
     CONSTANT_Class              =   7 ,
     CONSTANT_Fieldref           =   9 ,

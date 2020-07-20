@@ -20,7 +20,15 @@ CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len,
             i++;
         }
     }
-    // todo 判断cp_entries里是否已包含当前条目name
+    // 检查cp_entries里是否已存在当前字符串
+    // 如果有，则直接返回现有的字符串以及索引值
+    for (int i = 0; i < privc(ctx)->cp_entries_len; ++i) {
+        cj_cp_entry_t *en = privc(ctx)->cp_entries[i];
+        if (strncmp((char *)en->data, (char *)name, len) == 0) {
+            if (index != NULL) *index = i + privc(ctx)->cp_len - 1;
+            return en->data;
+        }
+    }
 
     u2 cur_idx = privc(ctx)->cp_entries_len++;
     if (privc(ctx)->cp_entries == NULL) {

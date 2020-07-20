@@ -157,6 +157,7 @@ void test_check_cj_cp_put_str(void **state) {
 
     assert_int_equal(index, index1);
     assert_string_equal(name1, "_test_entry_1");
+    assert_string_equal(name1, name);
 }
 
 int main(void) {

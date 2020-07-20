@@ -31,7 +31,11 @@
  */
 
 
-
+/**
+ * 设置class、field、method、attribute的偏移量offset
+ * @param ctx java类
+ * @return 设置是否成功
+ */
 CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
     const_str ptr = privc(ctx)->buf;
@@ -195,7 +199,7 @@ long cj_load_file(char *path, unsigned char **buf) {
 
 cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     //如果buf为空或者buf的长度len小于一个字节码文件所占的最小大小，
-    //字节码文件最小大小为ClassFile结构中所必须元素长度只和
+    //字节码文件最小大小为ClassFile结构中所必须元素长度之和
     //比如 magic + version + cp count + 必要的cp entries + access + this_class 等
     //则返回NULL
     if (buf == NULL || len < 16) { //fixme 仔细算算
@@ -203,18 +207,22 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
         return NULL;
     }
 
+    //根据magic判断是否为java的class字节码文件
     u4 magic = cj_ru4(buf);
     if (magic != 0xCAFEBABE) {
         fprintf(stderr, "ERROR: not a valid class bytecode buffer, invalid magic number\n");
         return NULL;
     }
 
+    //分别读取java大小版本号
     u2 minor_v = cj_ru2(buf + 4);
     u2 major_v = cj_ru2(buf + 6);
+    //常量池的个数
     u2 cp_len = cj_ru2(buf + 8);
 
     //todo check version
 
+    //分配内存
     u2 *cp_offsets = malloc(cp_len * sizeof(u2)); //常量池偏移地址映射，根据常量下标[1,cp_len)获取，第0位元素弃用
     u1 *cp_types = malloc(cp_len * sizeof(u1));
     int cur_cp_idx = 1;
@@ -227,6 +235,7 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
         *(cp_types + cur_cp_idx) = type;
         *(cp_offsets + cur_cp_idx) = cur_cp_offset;
         cur_cp_idx++;
+        //判断常量池中每个常量的类型
         switch (type) {
             /*+-----------------------------+-----+--------+
               |        Constant Kind        | Tag | Length |
@@ -302,6 +311,7 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
                 free(cp_offsets);
                 return NULL;
         }
+        //设置当前常量的截止位置
         cur_cp_offset += cp_size;
     }
 
@@ -318,12 +328,14 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     cj_class_t *cls = malloc(sizeof(cj_class_t));
     cj_class_priv_t *priv = malloc(sizeof(cj_class_priv_t));
 
+    //cj_class_s初始化
     cls->major_version = major_v;
     cls->minor_version = minor_v;
     cls->access_flags = access_flags;
     cls->interface_count = interfaces_count;
     cls->priv = priv;
 
+    //cj_class_priv_t初始化
     privc(cls)->dirty = false;
     privc(cls)->cp_len = cp_len;
     privc(cls)->header = header;

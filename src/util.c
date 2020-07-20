@@ -20,6 +20,7 @@ CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len,
             i++;
         }
     }
+    // todo 判断cp_entries里是否已包含当前条目name
 
     u2 cur_idx = privc(ctx)->cp_entries_len++;
     if (privc(ctx)->cp_entries == NULL) {

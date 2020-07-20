@@ -35,7 +35,8 @@ public class Test {
         long var1 = System.currentTimeMillis();
         System.out.println("Bye");
         long var2 = System.currentTimeMillis() - var1;
-        System.out.println(var2);
+        String s = "Bye bye";
+        System.out.println(var2 + s);
     }
 
     public static void main(String[] args) throws InterruptedException, ClassNotFoundException, IllegalAccessException, InstantiationException {

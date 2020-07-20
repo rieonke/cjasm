@@ -75,6 +75,8 @@ typedef struct cj_field_set_s cj_field_set_t;
 typedef struct cj_annotation_set_s cj_annotation_set_t;
 typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
+typedef struct cj_code_iter_s cj_code_iter_t;
+typedef struct cj_insn_s cj_insn_t;
 
 struct cj_cp_entry_s {
     u1 tag;
@@ -156,6 +158,51 @@ struct cj_annotation_priv_s {
     u4 offset;
 };
 
+struct cj_code_iter_s {
+    cj_code_t *code;
+    u4 current;
+    u4 length;
+};
+
+enum insn_type {
+    NONE,
+    INSN,
+    VAR,
+    JUMP,
+    IINC,
+    TABLE_SWITCH,
+    LOOKUP_SWITCH,
+    INT,
+    LDC,
+    FIELD,
+    METHOD,
+    INVOKE_DYNAMIC,
+    TYPE,
+    MULTI_ANEWARRAY
+};
+
+struct cj_insn_s {
+    enum cj_opcode opcode;
+    enum insn_type type;
+    int var;
+    int val;
+    int label;
+    int index;
+
+    u2 cp_idx;
+
+    int incr;
+    int s_low;
+    int s_high;
+    int s_default;
+    int *s_labels;
+    int s_pairs;
+    int *s_keys;
+
+    u1 dimensions;
+
+};
+
 //@formatter:off
 /**
  * 常量池的类型
@@ -216,5 +263,19 @@ CJ_INTERNAL cj_annotation_t *cj_annotation_set_get(cj_class_t *ctx, cj_annotatio
 CJ_INTERNAL void cj_annotation_set_free(cj_annotation_set_t *set);
 
 CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len);
+
+CJ_INTERNAL void cj_code_iterate(cj_code_t *code, void(*callback)(cj_insn_t *, void *ctx), void *ctx);
+
+CJ_INTERNAL cj_code_iter_t cj_code_iter_start(cj_code_t *code);
+
+CJ_INTERNAL bool cj_code_iter_has_next(cj_code_iter_t *iter);
+
+CJ_INTERNAL cj_insn_t *cj_code_iter_next(cj_code_iter_t *iter);
+
+CJ_INTERNAL void cj_insn_free(cj_insn_t *insn);
+
+CJ_INTERNAL u2 cj_code_compute_max_stack(cj_code_t *code);
+
+CJ_INTERNAL void cj_print_opcode(enum cj_opcode code);
 
 #endif //CJASM_UTIL_H

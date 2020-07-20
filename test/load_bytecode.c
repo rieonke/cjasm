@@ -14,7 +14,6 @@
 #define TEST_CLASS "io/ticup/example/Test.class"
 #define MAJOR_VERSION 52
 #define MINOR_VERSION 0
-#define INIT_IDX 34
 
 #define CTX ((cj_class_t*)*state)
 
@@ -76,9 +75,14 @@ void test_check_field(void **state) {
 
 }
 
+void print_bytecode(cj_insn_t *insn, void *ctx) {
+    cj_print_opcode(insn->opcode);
+}
+
 void test_check_method(void **state) {
 
     u2 i = cj_class_get_method_count(CTX);
+    assert(i > 0);
     cj_method_t *method = cj_class_get_method(CTX, 0);
     const unsigned char *name = cj_method_get_name(method);
     assert_string_equal(name, "<init>");
@@ -99,6 +103,7 @@ void test_check_method(void **state) {
     cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
     assert_non_null(descriptor);
 
+    cj_code_iterate(code, print_bytecode, NULL);
 
 }
 
@@ -124,20 +129,6 @@ void test_check_annotation(void **state) {
     assert(count > 0);
     cj_annotation_t *annotation = cj_class_get_annotation(CTX, 0);
     assert(annotation != NULL);
-
-}
-
-void test_get_str(void **ctx) {
-
-    const unsigned char *str = cj_cp_get_str(*ctx, INIT_IDX);
-    const unsigned char *str1 = cj_cp_get_str(*ctx, INIT_IDX);
-
-    assert_non_null(str);
-    assert_string_equal(str, "<init>");
-
-    assert_ptr_equal(str, str1);
-    assert_non_null(str1);
-    assert_string_equal(str1, "<init>");
 
 }
 
@@ -179,7 +170,6 @@ int main(void) {
             cmocka_unit_test(test_check_method),
             cmocka_unit_test(test_check_field),
             cmocka_unit_test(test_descriptor_parse),
-            cmocka_unit_test(test_get_str),
             cmocka_unit_test(test_check_cj_cp_put_str),
     };
 

@@ -1,5 +1,6 @@
 package io.ticup.example;
 
+import java.util.Random;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -28,6 +29,28 @@ public final class Test {
     @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
     @VisibleAnn(types= {"v_hello_1", "v_hello_2"})
     public Test() {
+
+        Random r = new Random();
+        int i = r.nextInt();
+
+        switch (i) {
+
+            case 1:
+                System.out.println("first");
+                break;
+            case 2:
+                System.out.println("second");
+                break;
+            case 3:
+                System.out.println("sorry");
+            default:
+                System.out.println("undefined");
+                break;
+
+
+        }
+
+
 
     }
 

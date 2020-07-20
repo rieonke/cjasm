@@ -545,7 +545,7 @@ cj_attribute_t *cj_class_get_attribute(cj_class_t *ctx, u2 idx) {
     return cj_attribute_set_get(ctx, privc(ctx)->attribute_set, idx);
 }
 
-cj_attr_type_t cj_attr_parse_type(const_str type_str) {
+enum cj_attr_type cj_attr_parse_type(const_str type_str) {
 #define comp_type(t) \
     if(strcmp((char*) type_str,#t) == 0) { \
         return   CJ_ATTR_##t;        \
@@ -713,13 +713,14 @@ cj_code_t *cj_method_get_code(cj_method_t *method) {
     u2 max_stack = cj_ru2(privc(ctx)->buf + offset + 6);
     u2 max_locals = cj_ru2(privc(ctx)->buf + offset + 8);
     u4 code_length = cj_ru4(privc(ctx)->buf + offset + 10);
-    offset += 12;
+    offset += 14;
 
     cj_code_t *code = malloc(sizeof(cj_code_t));
     code->offset = offset;
     code->length = code_length;
     code->max_stack = max_stack;
     code->max_locals = max_locals;
+    code->method = method;
 
     privm(method)->code = code;
 

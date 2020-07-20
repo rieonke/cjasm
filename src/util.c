@@ -641,7 +641,7 @@ CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
     }
 
     descriptor = malloc(sizeof(cj_descriptor_t));
-    descriptor->type = type;
+    descriptor->type = (unsigned char *)type;
     descriptor->parameter_types = malloc(sizeof(char *) * types_len);
     memcpy(descriptor->parameter_types, types, sizeof(char *) * types_len);
     descriptor->parameter_count = types_len;

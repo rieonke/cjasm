@@ -17,7 +17,7 @@ import java.lang.annotation.RetentionPolicy;
 
 @Deprecated
 @Ann(name = "hello", balance = 8.89)
-public class Test {
+public final class Test {
 
     private String name;
     private Test parent;

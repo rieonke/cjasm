@@ -29,7 +29,8 @@ typedef struct cj_annotation_s cj_annotation_t;
 typedef enum cj_attr_type cj_attr_type_t;
 typedef struct cj_element_pair_s cj_element_pair_t;
 typedef struct cj_element_s cj_element_t;
-
+typedef struct cj_code_s cj_code_t;
+typedef struct cj_descriptor_s cj_descriptor_t;
 
 //@formatter:off
 /*
@@ -97,8 +98,41 @@ enum cj_attr_type {
     CJ_ATTR_StackMapTable                        = 27,
     CJ_ATTR_Synthetic                            = 28,
 };
-//@formatter:on
 
+/**
+ *
+ *  +------------------+--------+
+ *  |    Flag Name     | Value  |
+ *  +------------------+--------+
+ *  | ACC_PUBLIC       | 0x0001 |
+ *  | ACC_PRIVATE      | 0x0002 |
+ *  | ACC_PROTECTED    | 0x0004 |
+ *  | ACC_STATIC       | 0x0008 |
+ *  | ACC_FINAL        | 0x0010 |
+ *  | ACC_SYNCHRONIZED | 0x0020 |
+ *  | ACC_BRIDGE       | 0x0040 |
+ *  | ACC_VARARGS      | 0x0080 |
+ *  | ACC_NATIVE       | 0x0100 |
+ *  | ACC_ABSTRACT     | 0x0400 |
+ *  | ACC_STRICT       | 0x0800 |
+ *  | ACC_SYNTHETIC    | 0x1000 |
+ *  +------------------+--------+
+ */
+ enum cj_access_flags {
+      ACC_PUBLIC       = 0x0001 ,
+      ACC_PRIVATE      = 0x0002 ,
+      ACC_PROTECTED    = 0x0004 ,
+      ACC_STATIC       = 0x0008 ,
+      ACC_FINAL        = 0x0010 ,
+      ACC_SYNCHRONIZED = 0x0020 ,
+      ACC_BRIDGE       = 0x0040 ,
+      ACC_VARARGS      = 0x0080 ,
+      ACC_NATIVE       = 0x0100 ,
+      ACC_ABSTRACT     = 0x0400 ,
+      ACC_STRICT       = 0x0800 ,
+      ACC_SYNTHETIC    = 0x1000 ,
+ };
+//@formatter:on
 
 struct cj_class_s {
     u2 major_version;
@@ -145,6 +179,14 @@ struct cj_annotation_s {
     cj_element_pair_t **attributes;
 };
 
+struct cj_descriptor_s {
+    bool is_field;
+    bool is_method;
+    int parameter_count;
+    unsigned char **parameter_types;
+    unsigned char *type;
+};
+
 struct cj_element_pair_s {
     const_str name;
     cj_element_t *value;
@@ -177,6 +219,13 @@ struct cj_element_s {
     cj_element_t **elements;
     /* }             */
     //@formatter:on
+};
+
+struct cj_code_s {
+    u4 offset;
+    u4 length;
+    u2 max_stack;
+    u2 max_locals;
 };
 
 /**
@@ -387,14 +436,6 @@ const_str cj_method_get_name(cj_method_t *method);
 u2 cj_method_get_access_flags(cj_method_t *method);
 
 /**
- * 获取方法的描述符.
- * 返回值不可被释放.
- * @param method 方法
- * @return 描述符
- */
-const_str cj_method_get_descriptor(cj_method_t *method);
-
-/**
  * 获取方法的属性数量.
  * @param method 方法
  * @return 属性数量
@@ -426,6 +467,43 @@ u2 cj_method_get_annotation_count(cj_method_t *method);
  * @return 属性，如果不存在该索引值时，返回NULL.
  */
 cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx);
+
+
+/**
+ * 获取方法的代码.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 代码，如果不存在代码时，返回NULL
+ */
+cj_code_t *cj_method_get_code(cj_method_t *method);
+
+
+
+/**
+ * 获取方法参数数量.
+ * @param method 方法
+ * @return 方法数量
+ */
+u2 cj_method_get_parameter_count(cj_method_t *method);
+
+
+/**
+ * 获取方法返回值类型.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 返回值类型
+ */
+const_str cj_method_get_return_type(cj_method_t *method);
+
+
+/**
+ * 获取方法描述符.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 方法描述符
+ */
+cj_descriptor_t * cj_method_get_descriptor(cj_method_t *method);
+
 
 /**
  * 根据属性名解析属性类型.

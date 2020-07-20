@@ -310,6 +310,14 @@ CJ_INTERNAL void cj_method_free(cj_method_t *method) {
 
     //因为方法的attribute_set在class中被释放，所以在此处不再释放
 
+    cj_sfree(privm(method)->code);
+
+    if (privm(method)->descriptor != NULL) {
+        cj_sfree(privm(method)->descriptor->parameter_types);
+        cj_sfree(privm(method)->descriptor->type);
+        cj_sfree(privm(method)->descriptor);
+    }
+
     cj_sfree(privm(method));
     cj_sfree(method);
 }
@@ -391,6 +399,8 @@ CJ_INTERNAL cj_method_t *cj_method_set_get(cj_class_t *ctx, cj_method_set_t *set
         privm(method)->attribute_set = privc(ctx)->method_attribute_sets[idx];
         privm(method)->annotation_set = NULL;
         privm(method)->annotation_set_initialized = false;
+        privm(method)->code = NULL;
+        privm(method)->descriptor = NULL;
 
         set->cache[idx] = method;
     }
@@ -519,5 +529,115 @@ CJ_INTERNAL bool cj_annotation_set_init(cj_class_t *ctx, cj_attribute_set_t *att
 
     *set = ann_set;
     return true;
+}
+
+CJ_INTERNAL const char *cj_descriptor_parse_primitive(unsigned char c) {
+    switch (c) {
+        case 'B':
+            return "byte";
+        case 'C':
+            return "char";
+        case 'D':
+            return "double";
+        case 'F':
+            return "float";
+        case 'I':
+            return "int";
+        case 'J':
+            return "long";
+        case 'S':
+            return "short";
+        case 'Z':
+            return "boolean";
+        default:
+            return NULL;
+    }
+
+}
+
+CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
+
+    //fixme 支持数组的解析
+
+    cj_descriptor_t *descriptor;
+    bool in_type = false;
+    bool in_arr = false;
+    bool in_parameter = false;
+    unsigned char type_buff[1024] = {0};
+    int type_pos = 0;
+
+    char *type = NULL;
+
+    const char *types[256] = {0};
+    int types_len = 0;
+
+    for (int i = 0; i < len; ++i) {
+        unsigned char c = desc[i];
+        switch (c) {
+            case '(':
+                if (in_parameter) {
+                    fprintf(stderr, "Error: invalid descriptor string, at pos %d\n", i);
+                    return NULL;
+                }
+                in_parameter = true;
+                break;
+            case ')':
+                if (!in_parameter) {
+                    fprintf(stderr, "Error: invalid descriptor string, at pos %d\n", i);
+                    return NULL;
+                }
+                in_parameter = false;
+                break;
+            case '[':
+                in_arr = true;
+                break;
+            case ';':
+                if (in_type) {
+                    in_type = false;
+                    if (in_parameter) {
+                        types[types_len++] = strndup((char *) type_buff, type_pos);
+                    } else {
+                        type = strndup((char *) type_buff, type_pos);
+                    }
+                    type_pos = 0;
+                }
+                break;
+            case 'L':
+                if (!in_type) {
+                    in_type = true;
+                    break;
+                }
+            case 'B':
+            case 'C':
+            case 'D':
+            case 'F':
+            case 'I':
+            case 'J':
+            case 'S':
+            case 'Z':
+                if (!in_type) {
+                    const char *str = cj_descriptor_parse_primitive(c);
+                    if (in_parameter) {
+                        types[types_len++] = strdup(str);
+                    } else {
+                        type = strdup(str);
+                    }
+                    break;
+                }
+            default:
+                if (in_type) {
+                    type_buff[type_pos++] = c;
+                }
+                break;
+        }
+    }
+
+    descriptor = malloc(sizeof(cj_descriptor_t));
+    descriptor->type = type;
+    descriptor->parameter_types = malloc(sizeof(char *) * types_len);
+    memcpy(descriptor->parameter_types, types, sizeof(char *) * types_len);
+    descriptor->parameter_count = types_len;
+
+    return descriptor;
 }
 

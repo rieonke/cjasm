@@ -354,6 +354,27 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
 
     cj_parse_offset(cls);
 
+
+    u2 offset = privc(cls)->cp_offsets[privc(cls)->this_class];
+    u2 name_index = cj_ru2(privc(cls)->buf + offset);
+
+    cls->raw_name = cj_cp_get_str(cls, name_index);
+
+#define cj_str_replace(str, len, find, replace) \
+    {                                           \
+        for (int i = 0; i < len; ++i ) {        \
+            if (str[i] == (char)find) {               \
+                ((char*)str)[i] = replace;               \
+            }                                   \
+        }                                       \
+    }
+
+    cls->name = (const_str) strdup((char *) cls->raw_name);
+
+    cj_str_replace(cls->name, strlen((char *) cls->name), '/', '.');
+
+    cls->short_name = (const_str) strrchr((char *) cls->raw_name, '/') + 1; //todo 如果当前类名不包含/
+
     return cls;
 }
 
@@ -435,6 +456,7 @@ void cj_class_free(cj_class_t *ctx) {
     if (privc(ctx)->annotation_set != NULL) {
         cj_annotation_set_free(privc(ctx)->annotation_set);
     }
+    cj_sfree((char *) ctx->name);
 
     cj_sfree(privc(ctx)->cp_cache);
     cj_sfree(privc(ctx));
@@ -457,9 +479,15 @@ u2 cj_class_get_field_count(cj_class_t *ctx) {
 }
 
 const_str cj_class_get_name(cj_class_t *ctx) {
-    u2 offset = privc(ctx)->cp_offsets[privc(ctx)->this_class];
-    u2 name_index = cj_ru2(privc(ctx)->buf + offset);
-    return cj_cp_get_str(ctx, name_index);
+    return ctx->name;
+}
+
+const_str cj_class_get_short_name(cj_class_t *ctx) {
+    return ctx->short_name;
+}
+
+const_str cj_class_get_raw_name(cj_class_t *ctx) {
+    return ctx->raw_name;
 }
 
 
@@ -487,17 +515,17 @@ const_str cj_field_get_descriptor(cj_field_t *field) {
 }
 
 u2 cj_field_get_attribute_count(cj_field_t *field) {
-  return field->attribute_count;
+    return field->attribute_count;
 }
 
 cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx) {
-  if (field->klass == NULL ||
-      field->attribute_count <= 0 ||
-      privf(field)->attribute_set == NULL ||
-      idx >= privf(field)->annotation_set->count){
-    return NULL;
-  }
-  return cj_attribute_set_get(field->klass, privf(field)->attribute_set, idx);
+    if (field->klass == NULL ||
+        field->attribute_count <= 0 ||
+        privf(field)->attribute_set == NULL ||
+        idx >= privf(field)->annotation_set->count) {
+        return NULL;
+    }
+    return cj_attribute_set_get(field->klass, privf(field)->attribute_set, idx);
 }
 
 void cj_field_set_name(cj_field_t *field, const_str name) {

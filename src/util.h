@@ -264,6 +264,8 @@ CJ_INTERNAL void cj_annotation_set_free(cj_annotation_set_t *set);
 
 CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len);
 
+CJ_INTERNAL void cj_descriptor_free(cj_descriptor_t *desc);
+
 CJ_INTERNAL void cj_code_iterate(cj_code_t *code, void(*callback)(cj_insn_t *, void *ctx), void *ctx);
 
 CJ_INTERNAL cj_code_iter_t cj_code_iter_start(cj_code_t *code);

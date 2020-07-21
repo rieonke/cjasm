@@ -24,7 +24,7 @@ CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len,
     // 如果有，则直接返回现有的字符串以及索引值
     for (int i = 0; i < privc(ctx)->cp_entries_len; ++i) {
         cj_cp_entry_t *en = privc(ctx)->cp_entries[i];
-        if (strncmp((char *)en->data, (char *)name, len) == 0) {
+        if (strncmp((char *) en->data, (char *) name, len) == 0) {
             if (index != NULL) *index = i + privc(ctx)->cp_len - 1;
             return en->data;
         }
@@ -321,13 +321,20 @@ CJ_INTERNAL void cj_method_free(cj_method_t *method) {
     cj_sfree(privm(method)->code);
 
     if (privm(method)->descriptor != NULL) {
-        cj_sfree(privm(method)->descriptor->parameter_types);
-        cj_sfree(privm(method)->descriptor->type);
-        cj_sfree(privm(method)->descriptor);
+        cj_descriptor_free(privm(method)->descriptor);
     }
 
     cj_sfree(privm(method));
     cj_sfree(method);
+}
+
+CJ_INTERNAL void cj_descriptor_free(cj_descriptor_t *desc) {
+    for (int i = 0; i < desc->parameter_count; ++i) {
+        cj_sfree(desc->parameter_types[i]);
+    }
+    cj_sfree(desc->parameter_types);
+    cj_sfree(desc->type);
+    cj_sfree(desc);
 }
 
 
@@ -557,6 +564,8 @@ CJ_INTERNAL const char *cj_descriptor_parse_primitive(unsigned char c) {
             return "short";
         case 'Z':
             return "boolean";
+        case 'V':
+            return "void";
         default:
             return NULL;
     }
@@ -623,6 +632,7 @@ CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
             case 'J':
             case 'S':
             case 'Z':
+            case 'V':
                 if (!in_type) {
                     const char *str = cj_descriptor_parse_primitive(c);
                     if (in_parameter) {
@@ -641,7 +651,7 @@ CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
     }
 
     descriptor = malloc(sizeof(cj_descriptor_t));
-    descriptor->type = (unsigned char *)type;
+    descriptor->type = (unsigned char *) type;
     descriptor->parameter_types = malloc(sizeof(char *) * types_len);
     memcpy(descriptor->parameter_types, types, sizeof(char *) * types_len);
     descriptor->parameter_count = types_len;

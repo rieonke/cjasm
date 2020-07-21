@@ -375,6 +375,9 @@ struct cj_class_s {
     u2 field_count;
     u2 method_count;
     cj_pointer priv;
+    const_str name;
+    const_str short_name;
+    const_str raw_name;
 };
 
 struct cj_field_s {
@@ -518,12 +521,31 @@ u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx);
 u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx);
 
 /**
- * 获取类名.
+ * 获取类名.类名格式如 com.example.Test
  * 返回值不可被释放.
  * @param ctx 类
  * @return 类名
  */
 const_str cj_class_get_name(cj_class_t *ctx);
+
+/**
+ * 获取短名.
+ * 如 com.example.Test 短名为 Test.
+ * 当没有包名时，短名与类名相同.
+ * 返回值不可被释放.
+ * @param ctx
+ * @return 短名，返回值不可被释放
+ */
+const_str cj_class_get_short_name(cj_class_t *ctx);
+
+
+/**
+ * 获取原生的类名，如com/example/Test.
+ * 返回值不可被释放.
+ * @param ctx
+ * @return 原生类名
+ */
+const_str cj_class_get_raw_name(cj_class_t *ctx);
 
 /**
  * 根据索引获取类的字段.

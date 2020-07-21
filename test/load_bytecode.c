@@ -48,7 +48,7 @@ void test_check_access_flags(void **state) {
 
 void test_check_class_name(void **state) {
     const unsigned char *name = cj_class_get_name(CTX);
-    assert_string_equal(name, "io/ticup/example/Test");
+    assert_string_equal(name, "io.ticup.example.Test");
 }
 
 void test_check_field(void **state) {
@@ -158,10 +158,10 @@ void test_descriptor_parse(void **state) {
 
 void test_check_cj_cp_put_str(void **state) {
     u2 index = 0;
-    const unsigned char *name = cj_cp_put_str(CTX,  (unsigned char *)"_test_entry_1",  14, &index);
+    const unsigned char *name = cj_cp_put_str(CTX, (unsigned char *) "_test_entry_1", 14, &index);
 
     u2 index1 = 0;
-    const unsigned char *name1 = cj_cp_put_str(CTX,  (unsigned char *)"_test_entry_1",  14, &index1);
+    const unsigned char *name1 = cj_cp_put_str(CTX, (unsigned char *) "_test_entry_1", 14, &index1);
 
     assert_int_equal(index, index1);
     assert_string_equal(name1, "_test_entry_1");

@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 
 @interface Ann {
     String name();
-
+    int age() default 0;
     double balance();
 }
 
@@ -20,20 +20,20 @@ import java.lang.annotation.RetentionPolicy;
 @Ann(name = "hello", balance = 8.89)
 public final class Test {
 
-    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
+    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911, age = 12)
     @VisibleAnn(types= {"v_hello_0", "v_hello_0"})
     private String name;
     private Test parent;
-    private int age;
+    private Integer age = 22222;
     private Double balance;
 
 
     @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
     @VisibleAnn(types= {"v_hello_1", "v_hello_2"})
     public Test() {
-
         Random r = new Random();
         int i = r.nextInt();
+        System.out.println(this.age);
 
         switch (i) {
 

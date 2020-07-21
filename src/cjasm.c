@@ -690,11 +690,19 @@ cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
 }
 
 u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx) {
-    return 0;
+    u2 offset = privc(ctx)->cp_offsets[idx];
+    return cj_ru4(privc(ctx)->buf + offset);
 }
 
 u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx) {
-    return 0;
+    u2 offset = privc(ctx)->cp_offsets[idx];
+    return cj_ru8(privc(ctx)->buf + offset);
+}
+
+int cj_cp_get_int(cj_class_t *ctx, u2 idx) {
+    u4 num_u4 = cj_cp_get_u4(ctx, idx);
+    int number = num_u4;
+    return number;
 }
 
 u2 cj_method_get_attribute_count(cj_method_t *method) {

@@ -140,16 +140,24 @@ CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf
     u1 tag = cj_ru1(ev_ptr + offset++);
     ev->tag = tag;
     switch (tag) {
+        case 'S': /*short*/
+        case 'Z': /*boolean*/
         case 'B': /*byte*/
         case 'C': /*char*/
         case 'I': /*int*/
-        case 'S': /*short*/
-        case 'Z': /*boolean*/
+        {
+            u2 idx = cj_ru2(ev_ptr + offset);
+            int val = cj_cp_get_int(ctx, idx);
+            ev->const_num = val;
+            offset += 2;
+            break;
+        }
         case 'F': /*float*/
         {
             u2 idx = cj_ru2(ev_ptr + offset);
             u4 val = cj_cp_get_u4(ctx, idx);
             ev->const_num = val;
+            offset += 2;
             break;
         }
         case 'D': /*double*/
@@ -158,6 +166,7 @@ CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf
             u2 idx = cj_ru2(ev_ptr + offset);
             u8 val = cj_cp_get_u8(ctx, idx);
             ev->const_num = val;
+            offset += 2;
             break;
         }
         case 's':/*string*/

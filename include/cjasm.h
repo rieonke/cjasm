@@ -515,6 +515,14 @@ const_str cj_cp_get_str(cj_class_t *ctx, u2 idx);
 u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx);
 
 /**
+ * 根据索引号从常量池中获取指定的int常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+int cj_cp_get_int(cj_class_t *ctx, u2 idx);
+
+/**
  * 根据索引号从常量池中获取指定的8字节常量
  * @param ctx 类
  * @param idx 常量池索引，[1 - 常量池长度)

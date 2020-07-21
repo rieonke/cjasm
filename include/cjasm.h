@@ -378,6 +378,8 @@ struct cj_class_s {
     const_str name;
     const_str short_name;
     const_str raw_name;
+    const_str package;
+    const_str raw_package;
 };
 
 struct cj_field_s {
@@ -546,6 +548,22 @@ const_str cj_class_get_short_name(cj_class_t *ctx);
  * @return 原生类名
  */
 const_str cj_class_get_raw_name(cj_class_t *ctx);
+
+/**
+ * 获取包名，如com.example
+ * 返回值不可被释放.
+ * @param ctx 类
+ * @return 包名字符串
+ */
+const_str cj_class_get_package(cj_class_t *ctx);
+
+/**
+ * 获取原生包名，如com/example
+ * 返回值不可被释放.
+ * @param ctx 类
+ * @return 原生包名字符串
+ */
+const_str cj_class_get_raw_package(cj_class_t *ctx);
 
 /**
  * 根据索引获取类的字段.

@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 
         cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
         if (strcmp((char *) method->name, "<init>") == 0) {
-            printf("\t%s() {\n", cj_class_get_short_name(cls));
+            printf("\t%s() {\n", cls->short_name);
         } else {
             printf("\t%s %s() {\n", descriptor->type, method->name);
         }

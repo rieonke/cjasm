@@ -528,6 +528,9 @@ u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx);
  */
 const_str cj_class_get_name(cj_class_t *ctx);
 
+
+void cj_class_set_name(cj_class_t *ctx, unsigned char *name);
+
 /**
  * 获取短名.
  * 如 com.example.Test 短名为 Test.

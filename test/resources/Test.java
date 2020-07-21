@@ -21,7 +21,7 @@ import java.lang.annotation.RetentionPolicy;
 public final class Test {
 
     @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
-    @VisibleAnn(types= {"v_hello_0", "v_hello_0"})
+    @VisibleAnn(types = {"v_hello_0", "v_hello_0"})
     private String name;
     private Test parent;
     private int age;
@@ -29,7 +29,7 @@ public final class Test {
 
 
     @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
-    @VisibleAnn(types= {"v_hello_1", "v_hello_2"})
+    @VisibleAnn(types = {"v_hello_1", "v_hello_2"})
     public Test() {
 
         Random r = new Random();
@@ -51,7 +51,6 @@ public final class Test {
 
 
         }
-
 
 
     }

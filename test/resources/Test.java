@@ -20,6 +20,8 @@ import java.lang.annotation.RetentionPolicy;
 @Ann(name = "hello", balance = 8.89)
 public final class Test {
 
+    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
+    @VisibleAnn(types= {"v_hello_0", "v_hello_0"})
     private String name;
     private Test parent;
     private int age;

@@ -73,6 +73,14 @@ void test_check_field(void **state) {
         assert_non_null(attr);
     }
 
+    u2 cnt = cj_field_get_annotation_count(field);
+    assert_int_equal(cnt, 2);
+
+    for (int i = 0; i < cnt; ++i) {
+        cj_annotation_t *ann = cj_field_get_annotation(field, i);
+        assert_non_null(ann);
+        printf("ann : %s\n", ann->type_name);
+    }
 }
 
 void print_bytecode(cj_insn_t *insn, void *ctx) {

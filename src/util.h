@@ -125,6 +125,10 @@ struct cj_cpool_s {
     u2 length;
     unsigned char **cache;
 
+    cj_cp_entry_t **entries;
+    u2 entries_len;
+    u4 *touched;
+
 };
 
 struct cj_class_priv_s {
@@ -137,10 +141,6 @@ struct cj_class_priv_s {
     //此类的起始偏移量（常量池之后的起始位置）
     u4 header;
     cj_cpool_t *cpool;
-
-    cj_cp_entry_t **cp_entries;
-    u2 cp_entries_len;
-    u4 *cp_touched;
 
     u2 this_class;
     u2 super_class;

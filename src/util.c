@@ -4,52 +4,6 @@
 
 #include "util.h"
 
-CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
-    // 检查现有的常量池中是否有当前字符串
-    // 如果有，则直接返回现有的字符串
-    // 如果不存在，则将该字符串放置于新的常量池中
-    for (int i = 1; i < privc(ctx)->cpool->length; ++i) {
-        u1 type = privc(ctx)->cpool->types[i];
-        if (type == CONSTANT_Utf8) {
-            const unsigned char *str = cj_cp_get_str(ctx, i);
-            if (strncmp((char *) str, (char *) name, len) == 0) {
-                if (index != NULL) *index = i;
-                return str;
-            }
-        } else if (type == CONSTANT_Long || type == CONSTANT_Double) {
-            i++;
-        }
-    }
-    // 检查cp_entries里是否已存在当前字符串
-    // 如果有，则直接返回现有的字符串以及索引值
-    for (int i = 0; i < privc(ctx)->cp_entries_len; ++i) {
-        cj_cp_entry_t *en = privc(ctx)->cp_entries[i];
-        if (strncmp((char *) en->data, (char *) name, len) == 0) {
-            if (index != NULL) *index = i + privc(ctx)->cpool->length;
-            return en->data;
-        }
-    }
-
-    u2 cur_idx = privc(ctx)->cp_entries_len++;
-    if (privc(ctx)->cp_entries == NULL) {
-        privc(ctx)->cp_entries = malloc(sizeof(cj_cp_entry_t *));
-    } else {
-        privc(ctx)->cp_entries = realloc(privc(ctx)->cp_entries, sizeof(cj_cp_entry_t *) * privc(ctx)->cp_entries_len);
-    }
-
-    cj_cp_entry_t *entry = malloc(sizeof(cj_cp_entry_t));
-    entry->tag = CONSTANT_Utf8;
-    entry->len = len;
-    entry->data = (unsigned char *) strndup((char *) name, len);
-
-    if (index != NULL) {
-        *index = cur_idx + privc(ctx)->cpool->length;
-    }
-
-    privc(ctx)->cp_entries[cur_idx] = entry;
-    return entry->data;
-}
-
 CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_ptr, u4 *out_offset) {
 
     u4 offset = out_offset == NULL ? 0 : *out_offset;

@@ -364,6 +364,8 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     cpool->types = cp_types;
     cpool->cache = calloc(cp_len, sizeof(unsigned char *));
     cpool->offsets = cp_offsets;
+    cpool->entries = NULL;
+    cpool->entries_len = 0;
 
     //cj_class_priv_t初始化
     privc(cls)->dirty = 0;
@@ -373,8 +375,6 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     privc(cls)->buf = malloc(sizeof(char) * len);
     privc(cls)->buf_len = len;
     privc(cls)->cpool = cpool;
-    privc(cls)->cp_entries = NULL;
-    privc(cls)->cp_entries_len = 0;
     privc(cls)->annotation_set = NULL;
     privc(cls)->annotation_set_initialized = false;
     memcpy((unsigned char *) privc(cls)->buf, buf, len);

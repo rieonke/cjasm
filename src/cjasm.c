@@ -79,14 +79,14 @@ void cj_class_free(cj_class_t *ctx) {
         cj_sfree(privc(ctx)->field_attribute_sets);
     }
 
-    if (privc(ctx)->cp_entries != NULL) {
-        for (int i = 0; i < privc(ctx)->cp_entries_len; ++i) {
-            cj_cp_entry_t *entry = privc(ctx)->cp_entries[i];
+    if (privc(ctx)->cpool->entries != NULL) {
+        for (int i = 0; i < privc(ctx)->cpool->entries_len; ++i) {
+            cj_cp_entry_t *entry = privc(ctx)->cpool->entries[i];
             if (entry == NULL) continue;
             free(entry->data);
             free(entry);
         }
-        free(privc(ctx)->cp_entries);
+        free(privc(ctx)->cpool->entries);
     }
 
     for (int i = 0; i < privc(ctx)->cpool->length; ++i) {

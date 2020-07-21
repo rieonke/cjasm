@@ -47,10 +47,22 @@
 #define cj_ri1(ptr) (*(i1 *) (ptr))
 #define cj_ri2(ptr) btol16(*(i2 *) (ptr)) /*NOLINT*/
 #define cj_ri4(ptr) btol32(*(i4 *) (ptr)) /*NOLINT*/
+#define cj_ri8(ptr) btol64(*(i8 *) (ptr)) /*NOLINT*/
+
 #define cj_ru1(ptr) (*(u1 *) (ptr))
 #define cj_ru2(ptr) btol16(*(u2 *) (ptr)) /*NOLINT*/
 #define cj_ru4(ptr) btol32(*(u4 *) (ptr)) /*NOLINT*/
 #define cj_ru8(ptr) btol64(*(u8 *) (ptr)) /*NOLINT*/
+
+#define cj_wu1(ptr, data) *(u1*)(ptr) = data
+#define cj_wu2(ptr, data) *(u2*)(ptr) = btol16(data) /*NOLINT*/
+#define cj_wu4(ptr, data) *(u4*)(ptr) = btol32(data) /*NOLINT*/
+#define cj_wu8(ptr, data) *(u8*)(ptr) = btol64(data) /*NOLINT*/
+
+#define cj_wi1(ptr, data) *(i1*)(ptr) = data
+#define cj_wi2(ptr, data) *(i2*)(ptr) = btol16(data) /*NOLINT*/
+#define cj_wi4(ptr, data) *(i4*)(ptr) = btol32(data) /*NOLINT*/
+#define cj_wi8(ptr, data) *(i8*)(ptr) = btol64(data) /*NOLINT*/
 
 /**
  * 用来表示内部使用的函数，不是公开的方法，不建议被外部调用，不保证向后兼容性
@@ -77,6 +89,13 @@ typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 typedef struct cj_code_iter_s cj_code_iter_t;
 typedef struct cj_insn_s cj_insn_t;
+typedef struct cj_cpool_s cj_cpool_t;
+typedef struct cj_buf_s cj_buf_t;
+
+struct cj_buf_s {
+    unsigned char *buf;
+    unsigned int length;
+};
 
 struct cj_cp_entry_s {
     u1 tag;
@@ -97,28 +116,31 @@ CJ_CACHEABLE_SET(cj_attribute_set_s, cj_attribute_t)
 CJ_CACHEABLE_SET(cj_method_set_s, cj_method_t)
 CJ_CACHEABLE_SET(cj_field_set_s, cj_field_t)
 
+struct cj_cpool_s {
+    //常量类型数组
+    u1 *types;
+    //常量池偏移量数组
+    u4 *offsets;
+    //常量池大小
+    u2 length;
+    unsigned char **cache;
+
+    cj_cp_entry_t **entries;
+    u2 entries_len;
+    u4 *touched;
+
+};
+
 struct cj_class_priv_s {
     //是否被改过标记
-    bool dirty;
+    unsigned int dirty;
     //类的字节码
     unsigned char const *buf;
     size_t buf_len;
 
     //此类的起始偏移量（常量池之后的起始位置）
     u4 header;
-
-    //常量池大小
-    u2 cp_len;
-    //常量类型数组
-    u1 *cp_types;
-    //常量池偏移量数组
-    u2 *cp_offsets;
-    //
-    unsigned char **cp_cache;
-    //
-    cj_cp_entry_t **cp_entries;
-
-    u2 cp_entries_len;
+    cj_cpool_t *cpool;
 
     u2 this_class;
     u2 super_class;
@@ -279,5 +301,7 @@ CJ_INTERNAL void cj_insn_free(cj_insn_t *insn);
 CJ_INTERNAL u2 cj_code_compute_max_stack(cj_code_t *code);
 
 CJ_INTERNAL void cj_print_opcode(enum cj_opcode code);
+
+CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str name);
 
 #endif //CJASM_UTIL_H

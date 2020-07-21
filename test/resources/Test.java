@@ -29,8 +29,9 @@ public final class Test {
 
 
     @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
-    @VisibleAnn(types= {"v_hello_1", "v_hello_2"})
+    @VisibleAnn(types = {"v_hello_1", "v_hello_2"})
     public Test() {
+
         Random r = new Random();
         int i = r.nextInt();
         System.out.println(this.age);

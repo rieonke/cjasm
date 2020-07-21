@@ -31,149 +31,6 @@
  */
 
 
-/**
- * 设置class、field、method、attribute的偏移量offset
- * @param ctx java类
- * @return 设置是否成功
- */
-CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
-
-    const_str ptr = privc(ctx)->buf;
-    u4 offset = privc(ctx)->header + 6;
-
-    u4 methods_count;
-    u2 interfaces_count;
-    u2 fields_count;
-    u2 attributes_count;
-
-    cj_field_set_t *field_set = NULL;
-    cj_method_set_t *method_set = NULL;
-
-    cj_attribute_set_t *class_attribute_set = NULL;
-    cj_attribute_set_t **field_attribute_sets = NULL;
-    cj_attribute_set_t **method_attribute_sets = NULL;
-
-    interfaces_count = cj_ru2(ptr + offset);
-    offset += 2 + interfaces_count * 2;
-
-    fields_count = cj_ru2(ptr + offset);
-    offset += 2;
-
-    if (fields_count > 0) {
-        field_set = malloc(sizeof(cj_field_set_t));
-        field_set->index = 0;
-        field_set->count = fields_count;
-        field_set->cache = NULL;
-        field_set->offsets = malloc(sizeof(u4) * fields_count);
-
-        field_attribute_sets = malloc(sizeof(cj_attribute_set_t *) * fields_count);
-
-        for (int i = 0; i < fields_count; ++i) {
-            field_set->offsets[i] = offset;
-
-            cj_attribute_set_t *attribute_set = NULL;
-
-            u4 attributes_length = cj_ru2(ptr + offset + 6);
-            offset += 8;
-
-            if (attributes_length > 0) {
-
-                attribute_set = malloc(sizeof(cj_attribute_set_t));
-
-                attribute_set->index = i;
-                attribute_set->count = attributes_length;
-                attribute_set->offsets = malloc(sizeof(u4) * attributes_length);
-                attribute_set->cache = NULL;
-
-                for (int j = 0; j < attributes_length; ++j) {
-                    attribute_set->offsets[j] = offset;
-                    u4 attribute_length = cj_ru4(ptr + offset + 2);
-                    offset += attribute_length + 6;
-                }
-            }
-
-            field_attribute_sets[i] = attribute_set;
-        }
-    }
-
-    methods_count = cj_ru2(ptr + offset);
-    offset += 2;
-
-    if (methods_count > 0) {
-        method_set = malloc(sizeof(cj_method_set_t));
-        method_set->index = 0;
-        method_set->count = methods_count;
-        method_set->cache = NULL;
-        method_set->offsets = malloc(sizeof(u4) * methods_count);
-
-
-        method_attribute_sets = malloc(sizeof(cj_attribute_set_t *) * methods_count);
-
-        for (int i = 0; i < methods_count; ++i) {
-            method_set->offsets[i] = offset;
-
-            cj_attribute_set_t *attribute_set = NULL;
-
-            u4 attributes_length = cj_ru2(ptr + offset + 6);
-            offset += 8;
-
-            if (attributes_length > 0) {
-
-                attribute_set = malloc(sizeof(cj_attribute_set_t));
-                attribute_set->index = i;
-                attribute_set->count = attributes_length;
-                attribute_set->offsets = malloc(sizeof(u4) * attributes_length);
-                attribute_set->cache = NULL;
-
-
-                for (int j = 0; j < attributes_length; ++j) {
-                    attribute_set->offsets[j] = offset;
-
-                    u4 attribute_length = cj_ru4(ptr + offset + 2);
-                    offset += attribute_length + 6;
-                }
-            }
-
-            method_attribute_sets[i] = attribute_set;
-        }
-    }
-
-    attributes_count = cj_ru2(ptr + offset);
-    offset += 2;
-
-    class_attribute_set = malloc(sizeof(cj_attribute_set_t));
-    class_attribute_set->index = 0;
-    class_attribute_set->count = attributes_count;
-    class_attribute_set->cache = NULL;
-    class_attribute_set->offsets = NULL;
-
-    if (attributes_count > 0) {
-        class_attribute_set->offsets = malloc(sizeof(u4) * attributes_count);
-        for (int i = 0; i < attributes_count; ++i) {
-            class_attribute_set->offsets[i] = offset;
-
-            u4 attribute_length = cj_ru4(ptr + offset + 2);
-            offset += attribute_length + 6;
-        }
-    }
-
-
-    ctx->field_count = fields_count;
-    ctx->method_count = methods_count;
-    ctx->interface_count = interfaces_count;
-    ctx->attr_count = attributes_count;
-
-    privc(ctx)->field_set = field_set;
-    privc(ctx)->method_set = method_set;
-    privc(ctx)->attribute_set = class_attribute_set;
-
-    privc(ctx)->field_attribute_sets = field_attribute_sets;
-    privc(ctx)->method_attribute_sets = method_attribute_sets;
-
-    return true;
-}
-
-
 long cj_load_file(char *path, unsigned char **buf) {
 
     FILE *f = NULL;
@@ -197,231 +54,11 @@ long cj_load_file(char *path, unsigned char **buf) {
     return len;
 }
 
-cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
-    //如果buf为空或者buf的长度len小于一个字节码文件所占的最小大小，
-    //字节码文件最小大小为ClassFile结构中所必须元素长度之和
-    //比如 magic + version + cp count + 必要的cp entries + access + this_class 等
-    //则返回NULL
-    if (buf == NULL || len < 16) { //fixme 仔细算算
-        fprintf(stderr, "ERROR: not a valid class bytecode buffer, to small\n");
-        return NULL;
-    }
-
-    //根据magic判断是否为java的class字节码文件
-    u4 magic = cj_ru4(buf);
-    if (magic != 0xCAFEBABE) {
-        fprintf(stderr, "ERROR: not a valid class bytecode buffer, invalid magic number\n");
-        return NULL;
-    }
-
-    //分别读取java大小版本号
-    u2 minor_v = cj_ru2(buf + 4);
-    u2 major_v = cj_ru2(buf + 6);
-    //常量池的个数
-    u2 cp_len = cj_ru2(buf + 8);
-
-    //todo check version
-
-    //分配内存
-    u2 *cp_offsets = malloc(cp_len * sizeof(u2)); //常量池偏移地址映射，根据常量下标[1,cp_len)获取，第0位元素弃用
-    u1 *cp_types = malloc(cp_len * sizeof(u1));
-    int cur_cp_idx = 1;
-    u4 cur_cp_offset = 10;
-    while (cur_cp_idx < cp_len) {
-
-        int cp_size;
-        enum cj_cp_type type = (enum cj_cp_type) cj_ru1(buf + cur_cp_offset++);
-
-        *(cp_types + cur_cp_idx) = type;
-        *(cp_offsets + cur_cp_idx) = cur_cp_offset;
-        cur_cp_idx++;
-        //判断常量池中每个常量的类型
-        switch (type) {
-            /*+-----------------------------+-----+--------+
-              |        Constant Kind        | Tag | Length |
-              +-----------------------------+-----+--------+
-              | CONSTANT_Class              |   7 | 2      |
-              | CONSTANT_Fieldref           |   9 | 4      |
-              | CONSTANT_Methodref          |  10 | 4      |
-              | CONSTANT_InterfaceMethodref |  11 | 4      |
-              | CONSTANT_String             |   8 | 2      |
-              | CONSTANT_Integer            |   3 | 4      |
-              | CONSTANT_Float              |   4 | 4      |
-              | CONSTANT_Long               |   5 | 8      |
-              | CONSTANT_Double             |   6 | 8      |
-              | CONSTANT_NameAndType        |  12 | 4      |
-              | CONSTANT_Utf8               |   1 | 2+     |
-              | CONSTANT_MethodHandle       |  15 | 3      |
-              | CONSTANT_MethodType         |  16 | 2      |
-              | CONSTANT_Dynamic            |  17 | 4      |
-              | CONSTANT_InvokeDynamic      |  18 | 4      |
-              | CONSTANT_Module             |  19 | 2      |
-              | CONSTANT_Package            |  20 | 2      |
-              +-----------------------------+-----+--------+ */
-            case CONSTANT_Class:
-            case CONSTANT_String:
-                //2
-                cp_size = 2;
-                break;
-            case CONSTANT_Fieldref:
-            case CONSTANT_Methodref:
-            case CONSTANT_InterfaceMethodref:
-                cp_size = 4;
-                //4
-                break;
-            case CONSTANT_Float:
-            case CONSTANT_Integer:
-                cp_size = 4;
-                //4
-                break;
-            case CONSTANT_Long:
-            case CONSTANT_Double:
-                cp_size = 8;
-                cur_cp_idx++;
-                //8
-                break;
-            case CONSTANT_NameAndType:
-                cp_size = 4;
-                //4
-                break;
-            case CONSTANT_MethodHandle:
-                cp_size = 3;
-                //3
-                break;
-            case CONSTANT_MethodType:
-                cp_size = 2;
-                //2
-                break;
-            case CONSTANT_Dynamic:
-            case CONSTANT_InvokeDynamic:
-                cp_size = 4;
-                //4
-                break;
-            case CONSTANT_Module:
-            case CONSTANT_Package:
-                cp_size = 2;
-                //2
-                break;
-            case CONSTANT_Utf8: {
-                cp_size = 2 + cj_ru2(buf + cur_cp_offset);
-                break;
-            }
-            default:
-                fprintf(stderr, "ERROR: invalid class format, unrecognized cp entry tag: %d\n", type);
-                free(cp_offsets);
-                return NULL;
-        }
-        //设置当前常量的截止位置
-        cur_cp_offset += cp_size;
-    }
-
-    //头部偏移量，为最后一个常量后一位，
-    // 类access_flags，方法、字段等从此偏移量以后可查
-    u4 header = cur_cp_offset;
-
-    u2 access_flags = cj_ru2(buf + header);
-    u2 this_class = cj_ru2(buf + header + 2);
-    u2 super_class = cj_ru2(buf + header + 4);
-    u2 interfaces_count = cj_ru2(buf + header + 6);
-
-
-    cj_class_t *cls = malloc(sizeof(cj_class_t));
-    cj_class_priv_t *priv = malloc(sizeof(cj_class_priv_t));
-
-    //cj_class_s初始化
-    cls->major_version = major_v;
-    cls->minor_version = minor_v;
-    cls->access_flags = access_flags;
-    cls->interface_count = interfaces_count;
-    cls->priv = priv;
-
-    //cj_class_priv_t初始化
-    privc(cls)->dirty = false;
-    privc(cls)->cp_len = cp_len;
-    privc(cls)->header = header;
-    privc(cls)->cp_offsets = cp_offsets;
-    privc(cls)->cp_cache = calloc(cp_len, sizeof(char *));
-    privc(cls)->cp_types = cp_types;
-    privc(cls)->this_class = this_class;
-    privc(cls)->super_class = super_class;
-    privc(cls)->buf = malloc(sizeof(char) * len);
-    privc(cls)->buf_len = len;
-    privc(cls)->cp_entries = NULL;
-    privc(cls)->cp_entries_len = 0;
-    privc(cls)->annotation_set = NULL;
-    privc(cls)->annotation_set_initialized = false;
-    memcpy((unsigned char *) privc(cls)->buf, buf, len);
-
-    cj_parse_offset(cls);
-
-
-    u2 offset = privc(cls)->cp_offsets[privc(cls)->this_class];
-    u2 name_index = cj_ru2(privc(cls)->buf + offset);
-
-    cls->raw_name = cj_cp_get_str(cls, name_index);
-
-#define cj_str_replace(str, len, find, replace) \
-    {                                           \
-        for (int i = 0; i < len; ++i ) {        \
-            if (str[i] == (char)find) {         \
-                ((char*)str)[i] = replace;      \
-            }                                   \
-        }                                       \
-    }
-
-    cls->name = (const_str) strdup((char *) cls->raw_name);
-    cj_str_replace(cls->name, strlen((char *) cls->name), '/', '.');
-    char *short_name = strrchr((char *) cls->raw_name, '/');
-    cls->short_name = short_name ? (const_str) short_name + 1 : cls->raw_name;
-    int package_len = (int) (cls->short_name - cls->raw_name);
-    cls->package = (const_str) strndup((char *) cls->name, package_len);
-    cls->raw_package = (const_str) strdup((char *) cls->package);
-
-    if (package_len > 0) {
-        cj_str_replace(cls->raw_package, package_len, '.', '/');
-    }
-
-    return cls;
-}
-
-const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
-
-    if (idx >= privc(ctx)->cp_len && privc(ctx)->cp_entries == NULL) {
-        return NULL;
-    }
-
-    //如果该索引在原有常量池范围内，则在原有的常量池中查找
-    //否则如果索引已经超过了原有常量池的大小，则从新增常量数组中查找.
-
-    if (privc(ctx)->cp_len > idx) {
-        if (privc(ctx)->cp_cache[idx] == NULL) {
-            u2 offset = privc(ctx)->cp_offsets[idx];
-            const_str ptr = privc(ctx)->buf + offset;
-
-            u2 len = cj_ru2(ptr);
-            privc(ctx)->cp_cache[idx] = malloc(sizeof(char) * (len + 1));
-            privc(ctx)->cp_cache[idx][len] = 0;
-            memcpy(privc(ctx)->cp_cache[idx], ptr + 2, len);
-        }
-        return privc(ctx)->cp_cache[idx];
-    }
-
-    u2 new_idx = idx - privc(ctx)->cp_len;
-    if (new_idx >= 0 && new_idx < privc(ctx)->cp_entries_len) {
-        cj_cp_entry_t *entry = privc(ctx)->cp_entries[new_idx];
-        if (entry == NULL) return NULL;
-        if (entry->tag != CONSTANT_Utf8) return NULL;
-        return entry->data;
-    }
-
-    return NULL;
-}
-
 void cj_class_free(cj_class_t *ctx) {
     if (ctx == NULL) return;
     cj_sfree((void *) privc(ctx)->buf);
-    cj_sfree(privc(ctx)->cp_offsets);
-    cj_sfree(privc(ctx)->cp_types);
+    cj_sfree(privc(ctx)->cpool->offsets);
+    cj_sfree(privc(ctx)->cpool->types);
 
     cj_method_set_free(privc(ctx)->method_set);
     cj_field_set_free(privc(ctx)->field_set);
@@ -442,20 +79,20 @@ void cj_class_free(cj_class_t *ctx) {
         cj_sfree(privc(ctx)->field_attribute_sets);
     }
 
-    if (privc(ctx)->cp_entries != NULL) {
-        for (int i = 0; i < privc(ctx)->cp_entries_len; ++i) {
-            cj_cp_entry_t *entry = privc(ctx)->cp_entries[i];
+    if (privc(ctx)->cpool->entries != NULL) {
+        for (int i = 0; i < privc(ctx)->cpool->entries_len; ++i) {
+            cj_cp_entry_t *entry = privc(ctx)->cpool->entries[i];
             if (entry == NULL) continue;
             free(entry->data);
             free(entry);
         }
-        free(privc(ctx)->cp_entries);
+        free(privc(ctx)->cpool->entries);
     }
 
-    for (int i = 0; i < privc(ctx)->cp_len; ++i) {
-        if (privc(ctx)->cp_cache[i] != NULL) {
-            free(privc(ctx)->cp_cache[i]);
-            privc(ctx)->cp_cache[i] = NULL;
+    for (int i = 0; i < privc(ctx)->cpool->length; ++i) {
+        if (privc(ctx)->cpool->cache[i] != NULL) {
+            free(privc(ctx)->cpool->cache[i]);
+            privc(ctx)->cpool->cache[i] = NULL;
         }
     }
 
@@ -466,20 +103,9 @@ void cj_class_free(cj_class_t *ctx) {
     cj_sfree((char *) ctx->package);
     cj_sfree((char *) ctx->raw_package);
 
-    cj_sfree(privc(ctx)->cp_cache);
+    cj_sfree(privc(ctx)->cpool->cache);
     cj_sfree(privc(ctx));
     cj_sfree(ctx);
-}
-
-bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len) {
-    if (!privc(ctx)->dirty) {
-
-        *len = privc(ctx)->buf_len;
-        *out = malloc(sizeof(unsigned char *) * *len);
-        memcpy(*out, privc(ctx)->buf, *len);
-        return true;
-    }
-    return false;
 }
 
 u2 cj_class_get_field_count(cj_class_t *ctx) {
@@ -690,12 +316,12 @@ cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
 }
 
 u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx) {
-    u2 offset = privc(ctx)->cp_offsets[idx];
+    u2 offset = privc(ctx)->cpool->offsets[idx];
     return cj_ru4(privc(ctx)->buf + offset);
 }
 
 u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx) {
-    u2 offset = privc(ctx)->cp_offsets[idx];
+    u2 offset = privc(ctx)->cpool->offsets[idx];
     return cj_ru8(privc(ctx)->buf + offset);
 }
 

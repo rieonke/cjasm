@@ -519,21 +519,21 @@ u2 cj_field_get_attribute_count(cj_field_t *field) {
 }
 
 cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx) {
-  if (field->klass == NULL ||
-      field->attribute_count <= 0 ||
-      privf(field)->attribute_set == NULL ||
-      idx >= privf(field)->attribute_set->count){
-    return NULL;
-  }
-  return cj_attribute_set_get(field->klass, privf(field)->attribute_set, idx);
+    if (field->klass == NULL ||
+        field->attribute_count <= 0 ||
+        privf(field)->attribute_set == NULL ||
+        idx >= privf(field)->attribute_set->count) {
+        return NULL;
+    }
+    return cj_attribute_set_get(field->klass, privf(field)->attribute_set, idx);
 }
 
 u2 cj_field_get_annotation_count(cj_field_t *field) {
 
     if (field == NULL ||
-            privf(field) == NULL ||
-            field->klass == NULL ||
-            field->attribute_count <= 0) {
+        privf(field) == NULL ||
+        field->klass == NULL ||
+        field->attribute_count <= 0) {
         return 0;
     }
 
@@ -546,10 +546,10 @@ u2 cj_field_get_annotation_count(cj_field_t *field) {
     return privf(field)->annotation_set->count;
 }
 
-cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx){
+cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx) {
     if (field == NULL ||
-            privf(field) == NULL ||
-            field->klass == NULL) {
+        privf(field) == NULL ||
+        field->klass == NULL) {
         return NULL;
     }
 

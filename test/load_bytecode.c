@@ -65,7 +65,7 @@ void test_check_field(void **state) {
     const unsigned char *desc = cj_field_get_descriptor(field);
     assert_string_equal(desc, "Ljava/lang/String;");
 
-    const unsigned char *str = cj_cp_get_str(CTX, privc(CTX)->cp_len);
+    const unsigned char *str = cj_cp_get_str(CTX, privc(CTX)->cpool->length);
     assert_string_equal(str, "__reserved__test__hello");
 
     for (int i = 0; i < cj_field_get_attribute_count(field); ++i) {

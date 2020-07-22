@@ -528,14 +528,14 @@ int cj_cp_get_int(cj_class_t *ctx, u2 idx);
  * @param idx
  * @return
  */
-char cj_cp_get_char(cj_class_t *ctx, u2 idx);
+u2 cj_cp_get_char(cj_class_t *ctx, u2 idx);
 /**
  * 根据索引号从常量池中获取指定的byte常量
  * @param ctx
  * @param idx
  * @return
  */
-unsigned char cj_cp_get_byte(cj_class_t *ctx, u2 idx);
+char cj_cp_get_byte(cj_class_t *ctx, u2 idx);
 /**
  * 根据索引号从常量池中获取指定的boolean常量
  * @param ctx

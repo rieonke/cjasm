@@ -247,6 +247,21 @@ int cj_cp_get_int(cj_class_t *ctx, u2 idx) {
     return (int) cj_cp_get_u4(ctx, idx);
 }
 
+u2 cj_cp_get_char(cj_class_t *ctx, u2 idx) {
+    u4 c = cj_cp_get_u4(ctx, idx);
+    return c & 0xffff; /* NOLINT */
+}
+
+bool cj_cp_get_bool(cj_class_t *ctx, u2 idx) {
+    u4 c = cj_cp_get_u4(ctx, idx);
+    return c == 1; /* NOLINT */
+}
+
+char cj_cp_get_byte(cj_class_t *ctx, u2 idx) {
+    u4 c = cj_cp_get_u4(ctx, idx);
+    return c & 0xff; /* NOLINT */
+}
+
 long cj_cp_get_long(cj_class_t *ctx, u2 idx) {
     return (long) cj_cp_get_u8(ctx, idx);
 }

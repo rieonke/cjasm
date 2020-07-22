@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <math.h>
+#include <limits.h>
 
 /*
  ClassFile {
@@ -700,9 +701,53 @@ u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx) {
 }
 
 int cj_cp_get_int(cj_class_t *ctx, u2 idx) {
-    u4 num_u4 = cj_cp_get_u4(ctx, idx);
-    int number = num_u4;
-    return number;
+    return (int) cj_cp_get_u4(ctx, idx);
+}
+
+long cj_cp_get_long(cj_class_t *ctx, u2 idx) {
+    return (long) cj_cp_get_u8(ctx, idx);
+}
+
+float cj_cp_get_float(cj_class_t *ctx, u2 idx) {
+    int bits = cj_cp_get_int(ctx, idx);
+    if (0x7f800000 == bits) {
+        return INFINITY;
+    } else if (0xff800000 == bits) {
+        return -INFINITY;
+    } else if ((bits >= 0x7f800001 && bits <= 0x7fffffff) ||
+               (bits >= 0xff800001 && bits <= 0xffffffff)) {
+        return NAN;
+    } else {
+        int s = ((bits >> 31) == 0) ? 1 : -1; /* NOLINT */
+        int e = ((bits >> 23) & 0xff);        /* NOLINT */
+        int m = (e == 0) ?
+                (bits & 0x7fffff) << 1 :      /* NOLINT */
+                (bits & 0x7fffff) | 0x800000; /* NOLINT */
+        float f = s * m * pow(2, e - 150);    /* NOLINT */
+        return f;
+    }
+
+    return (float) cj_cp_get_u8(ctx, idx);
+}
+
+double cj_cp_get_double(cj_class_t *ctx, u2 idx) {
+    long bits = cj_cp_get_long(ctx, idx);
+    if (0x7ff0000000000000L == bits) {
+        return INFINITY;
+    } else if (0xfff0000000000000L == bits) {
+        return -INFINITY;
+    } else if ((bits >= 0x7ff0000000000001L && bits <= 0x7fffffffffffffffL) ||
+               (bits >= 0xfff0000000000001L && bits <= 0xffffffffffffffffL)) {
+        return NAN;
+    } else {
+        int s = ((bits >> 63) == 0) ? 1 : -1;                   /* NOLINT */
+        int e = (int)((bits >> 52) & 0x7ffL);                   /* NOLINT */
+        long m = (e == 0) ?
+                (bits & 0xfffffffffffffL) << 1 :                /* NOLINT */
+                (bits & 0xfffffffffffffL) | 0x10000000000000L;  /* NOLINT */
+        double d = s * m * pow(2, e - 1075);                    /* NOLINT */
+        return d;
+    }
 }
 
 u2 cj_method_get_attribute_count(cj_method_t *method) {

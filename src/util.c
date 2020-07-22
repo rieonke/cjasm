@@ -155,16 +155,23 @@ CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf
         case 'F': /*float*/
         {
             u2 idx = cj_ru2(ev_ptr + offset);
-            u4 val = cj_cp_get_u4(ctx, idx);
+            float val = cj_cp_get_float(ctx, idx);
             ev->const_num = val;
             offset += 2;
             break;
         }
         case 'D': /*double*/
+        {
+            u2 idx = cj_ru2(ev_ptr + offset);
+            double val = cj_cp_get_double(ctx, idx);
+            ev->const_num = val;
+            offset += 2;
+            break;
+        }
         case 'J': /*long*/
         {
             u2 idx = cj_ru2(ev_ptr + offset);
-            u8 val = cj_cp_get_u8(ctx, idx);
+            long val = cj_cp_get_long(ctx, idx);
             ev->const_num = val;
             offset += 2;
             break;

@@ -531,6 +531,29 @@ int cj_cp_get_int(cj_class_t *ctx, u2 idx);
 u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx);
 
 /**
+ * 根据索引号从常量池中获取指定的long常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+long cj_cp_get_long(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的float常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+float cj_cp_get_float(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的double常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+double cj_cp_get_double(cj_class_t *ctx, u2 idx);
+/**
  * 获取类名.类名格式如 com.example.Test
  * 返回值不可被释放.
  * @param ctx 类

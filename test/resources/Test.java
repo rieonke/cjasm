@@ -7,7 +7,9 @@ import java.lang.annotation.RetentionPolicy;
 @interface Ann {
     String name();
     int age() default 0;
-    double balance();
+    long num() default 0l;
+    float tax() default 0.0f;
+    double balance() default 0.0d;
 }
 
 
@@ -20,7 +22,7 @@ import java.lang.annotation.RetentionPolicy;
 @Ann(name = "hello", balance = 8.89)
 public final class Test {
 
-    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911, age = 12)
+    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911d, age = 12, num=1234567890l, tax=0.032f)
     @VisibleAnn(types= {"v_hello_0", "v_hello_0"})
     private String name;
     private Test parent;
@@ -28,7 +30,7 @@ public final class Test {
     private Double balance;
 
 
-    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911)
+    @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911d)
     @VisibleAnn(types= {"v_hello_1", "v_hello_2"})
     public Test() {
         Random r = new Random();

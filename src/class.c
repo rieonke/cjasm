@@ -6,6 +6,7 @@
 #include <assert.h>
 #include "util.h"
 #include "cpool.h"
+#include "descriptor.h"
 
 #define CJ_CLASS_NAME_DIRTY 0x1
 
@@ -13,8 +14,8 @@
 #define cj_str_replace(str, len, find, replace) \
     {                                           \
         for (int i = 0; i < len; ++i ) {        \
-            if (str[i] == (char)find) {               \
-                ((char*)str)[i] = replace;               \
+            if (str[i] == (char)find) {         \
+                ((char*)str)[i] = replace;      \
             }                                   \
         }                                       \
     }
@@ -191,6 +192,17 @@ bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len) {
     return false;
 }
 
+unsigned char *cj_descriptor_replace_type(const_str descriptor, const_str old_element, const_str new_element) {
+    cj_descriptor_t *desc = cj_descriptor_parse(descriptor, strlen((char *) descriptor));
+    for (int i = 0; i < desc->parameter_count; ++i) {
+        //todo replace
+    }
+
+    //todo replace type
+
+    return cj_descriptor_to_string(desc);
+}
+
 void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     if (ctx == NULL || privm(ctx) == NULL) return;
 
@@ -199,13 +211,25 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     }
 
     //convert
+    const_str old_name = ctx->raw_name;
     unsigned char *t_name = (unsigned char *) strdup((char *) name);
     cj_str_replace(t_name, strlen((char *) t_name), '.', '/')
 
     u2 index = 0;
     const_str new_name = cj_cp_put_str(ctx, t_name, strlen((char *) t_name), &index);
     privc(ctx)->dirty |= CJ_CLASS_NAME_DIRTY;
-    privc(ctx)->this_class = index;
+    cj_cp_update_class(ctx, privc(ctx)->this_class, index);
+
+    //find all descriptor
+    cj_cpool_t *cpool = privc(ctx)->cpool;
+    for (int i = 0; i < cpool->descriptors_len; ++i) {
+        u2 idx = cpool->descriptors[i];
+        const_str descriptor = cj_cp_get_str(ctx, idx);
+
+        unsigned char *new_desc = cj_descriptor_replace_type(descriptor, old_name, new_name);
+        printf("%s\n", new_desc); //todo impl this
+    }
+
 
     cj_class_update_name(ctx, new_name);
 

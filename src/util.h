@@ -130,6 +130,9 @@ struct cj_cpool_s {
     u2 entries_len;
     u4 *touched;
 
+    u2 *descriptors;
+    u2 descriptors_len;
+
 };
 
 struct cj_class_priv_s {
@@ -286,10 +289,6 @@ CJ_INTERNAL bool cj_annotation_set_init(cj_class_t *ctx, cj_attribute_set_t *att
 CJ_INTERNAL cj_annotation_t *cj_annotation_set_get(cj_class_t *ctx, cj_annotation_set_t *set, u2 idx);
 
 CJ_INTERNAL void cj_annotation_set_free(cj_annotation_set_t *set);
-
-CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len);
-
-CJ_INTERNAL void cj_descriptor_free(cj_descriptor_t *desc);
 
 CJ_INTERNAL void cj_code_iterate(cj_code_t *code, void(*callback)(cj_insn_t *, void *ctx), void *ctx);
 

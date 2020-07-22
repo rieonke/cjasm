@@ -59,6 +59,10 @@ public final class Test {
 
     }
 
+    public Test getParent() {
+        return null;
+    }
+
     public void sayBye() {
         long var1 = System.currentTimeMillis();
         System.out.println("Bye");

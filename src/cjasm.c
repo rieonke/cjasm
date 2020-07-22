@@ -3,6 +3,7 @@
 //
 
 #include "cjasm.h"
+#include "descriptor.h"
 #include "./util.h"
 #include <stdio.h>
 #include <stdlib.h>

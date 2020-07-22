@@ -74,6 +74,9 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
     //分配内存
     u4 *cp_offsets = malloc(cp_len * sizeof(u4)); //常量池偏移地址映射，根据常量下标[1,cp_len)获取，第0位元素弃用
     u1 *cp_types = malloc(cp_len * sizeof(u1));
+    u2 *descriptors = malloc(cp_len * sizeof(u2));
+    u2 descriptors_len = 0;
+
     int cur_cp_idx = 1;
     u4 cur_cp_offset = 10;
     while (cur_cp_idx < cp_len) {
@@ -129,18 +132,24 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
                 cur_cp_idx++;
                 //8
                 break;
-            case CONSTANT_NameAndType:
+            case CONSTANT_NameAndType: {
+                u2 descriptor_idx = cj_ru2(buf + cur_cp_offset + 2);
+                descriptors[descriptors_len++] = descriptor_idx;
                 cp_size = 4;
                 //4
                 break;
+            }
             case CONSTANT_MethodHandle:
                 cp_size = 3;
                 //3
                 break;
-            case CONSTANT_MethodType:
+            case CONSTANT_MethodType: {
+                u2 descriptor_idx = cj_ru2(buf + cur_cp_offset);
+                descriptors[descriptors_len++] = descriptor_idx;
                 cp_size = 2;
                 //2
                 break;
+            }
             case CONSTANT_Dynamic:
             case CONSTANT_InvokeDynamic:
                 cp_size = 4;
@@ -169,10 +178,13 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
     cpool->length = cp_len;
     cpool->types = cp_types;
     cpool->cache = calloc(cp_len, sizeof(unsigned char *));
+    cpool->touched = calloc(cp_len, sizeof(u4));
     cpool->offsets = cp_offsets;
     cpool->entries = NULL;
     cpool->entries_len = 0;
     cpool->tail_offset = cur_cp_offset;
+    cpool->descriptors = descriptors;
+    cpool->descriptors_len = descriptors_len;
     return cpool;
 }
 
@@ -195,6 +207,7 @@ void cj_cp_free(cj_cpool_t *cpool) {
         }
     }
     cj_sfree(cpool->cache);
+    cj_sfree(cpool->touched);
 
     free(cpool);
 }
@@ -291,7 +304,6 @@ double cj_cp_get_double(cj_class_t *ctx, u2 idx) {
     }
 }
 
-
 CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
     // 检查现有的常量池中是否有当前字符串
     // 如果有，则直接返回现有的字符串
@@ -337,5 +349,17 @@ CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len,
 
     cpool->entries[cur_idx] = entry;
     return entry->data;
+}
+
+CJ_INTERNAL bool cj_cp_update_str(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
+    return false;
+}
+
+CJ_INTERNAL bool cj_cp_update_class(cj_class_t *ctx, u2 idx, u2 name_idx) {
+    //todo check
+    cj_cpool_t *cpool = privc(ctx)->cpool;
+    u4 offset = cpool->offsets[idx];
+    cj_wu2(privc(ctx)->buf + offset, name_idx);
+    return true;
 }
 

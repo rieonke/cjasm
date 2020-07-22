@@ -155,6 +155,8 @@ struct cj_class_priv_s {
     cj_attribute_set_t *attribute_set;
     bool annotation_set_initialized;
     cj_annotation_set_t *annotation_set;
+
+    bool initialized;
 };
 
 struct cj_method_priv_s {

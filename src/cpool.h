@@ -7,7 +7,11 @@
 
 #include "util.h"
 
+cj_cpool_t *cj_cp_parse(buf_ptr buf);
+
 cj_buf_t *cj_cp_to_buf(cj_class_t *ctx);
+
+void cj_cp_free(cj_cpool_t *cpool);
 
 
 #endif //CJASM_CPOOL_H

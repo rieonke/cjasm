@@ -63,6 +63,141 @@ cj_buf_t *cj_cp_to_buf(cj_class_t *ctx) {
     return buf;
 }
 
+cj_cpool_t *cj_cp_parse(buf_ptr buf) {
+
+    //常量池的个数
+    u2 cp_len = cj_ru2(buf + 8);
+
+    //todo check version
+
+    //分配内存
+    u4 *cp_offsets = malloc(cp_len * sizeof(u4)); //常量池偏移地址映射，根据常量下标[1,cp_len)获取，第0位元素弃用
+    u1 *cp_types = malloc(cp_len * sizeof(u1));
+    int cur_cp_idx = 1;
+    u4 cur_cp_offset = 10;
+    while (cur_cp_idx < cp_len) {
+
+        int cp_size;
+        enum cj_cp_type type = (enum cj_cp_type) cj_ru1(buf + cur_cp_offset++);
+
+        *(cp_types + cur_cp_idx) = type;
+        *(cp_offsets + cur_cp_idx) = cur_cp_offset;
+        cur_cp_idx++;
+        //判断常量池中每个常量的类型
+        switch (type) {
+            /*+-----------------------------+-----+--------+
+              |        Constant Kind        | Tag | Length |
+              +-----------------------------+-----+--------+
+              | CONSTANT_Class              |   7 | 2      |
+              | CONSTANT_Fieldref           |   9 | 4      |
+              | CONSTANT_Methodref          |  10 | 4      |
+              | CONSTANT_InterfaceMethodref |  11 | 4      |
+              | CONSTANT_String             |   8 | 2      |
+              | CONSTANT_Integer            |   3 | 4      |
+              | CONSTANT_Float              |   4 | 4      |
+              | CONSTANT_Long               |   5 | 8      |
+              | CONSTANT_Double             |   6 | 8      |
+              | CONSTANT_NameAndType        |  12 | 4      |
+              | CONSTANT_Utf8               |   1 | 2+     |
+              | CONSTANT_MethodHandle       |  15 | 3      |
+              | CONSTANT_MethodType         |  16 | 2      |
+              | CONSTANT_Dynamic            |  17 | 4      |
+              | CONSTANT_InvokeDynamic      |  18 | 4      |
+              | CONSTANT_Module             |  19 | 2      |
+              | CONSTANT_Package            |  20 | 2      |
+              +-----------------------------+-----+--------+ */
+            case CONSTANT_Class:
+            case CONSTANT_String:
+                //2
+                cp_size = 2;
+                break;
+            case CONSTANT_Fieldref:
+            case CONSTANT_Methodref:
+            case CONSTANT_InterfaceMethodref:
+                cp_size = 4;
+                //4
+                break;
+            case CONSTANT_Float:
+            case CONSTANT_Integer:
+                cp_size = 4;
+                //4
+                break;
+            case CONSTANT_Long:
+            case CONSTANT_Double:
+                cp_size = 8;
+                cur_cp_idx++;
+                //8
+                break;
+            case CONSTANT_NameAndType:
+                cp_size = 4;
+                //4
+                break;
+            case CONSTANT_MethodHandle:
+                cp_size = 3;
+                //3
+                break;
+            case CONSTANT_MethodType:
+                cp_size = 2;
+                //2
+                break;
+            case CONSTANT_Dynamic:
+            case CONSTANT_InvokeDynamic:
+                cp_size = 4;
+                //4
+                break;
+            case CONSTANT_Module:
+            case CONSTANT_Package:
+                cp_size = 2;
+                //2
+                break;
+            case CONSTANT_Utf8: {
+                cp_size = 2 + cj_ru2(buf + cur_cp_offset);
+                break;
+            }
+            default:
+                fprintf(stderr, "ERROR: invalid class format, unrecognized cp entry tag: %d\n", type);
+                free(cp_offsets);
+                return NULL;
+        }
+        //设置当前常量的截止位置
+        cur_cp_offset += cp_size;
+    }
+
+
+    cj_cpool_t *cpool = malloc(sizeof(cj_cpool_t));
+    cpool->length = cp_len;
+    cpool->types = cp_types;
+    cpool->cache = calloc(cp_len, sizeof(unsigned char *));
+    cpool->offsets = cp_offsets;
+    cpool->entries = NULL;
+    cpool->entries_len = 0;
+    cpool->tail_offset = cur_cp_offset;
+    return cpool;
+}
+
+void cj_cp_free(cj_cpool_t *cpool) {
+
+    if (cpool->entries != NULL) {
+        for (int i = 0; i < cpool->entries_len; ++i) {
+            cj_cp_entry_t *entry = cpool->entries[i];
+            if (entry == NULL) continue;
+            free(entry->data);
+            free(entry);
+        }
+        free(cpool->entries);
+    }
+
+    for (int i = 0; i < cpool->length; ++i) {
+        if (cpool->cache[i] != NULL) {
+            free(cpool->cache[i]);
+            cpool->cache[i] = NULL;
+        }
+    }
+    cj_sfree(cpool->cache);
+
+    free(cpool);
+}
+
 const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
 
     cj_cpool_t *cpool = privc(ctx)->cpool;

@@ -46,4 +46,5 @@ endfunction()
 enable_testing()
 cjasm_add_ctest(load_bytecode)
 cjasm_add_ctest(simple_decompiler)
+cjasm_add_ctest(write_bytecode)
 

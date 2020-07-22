@@ -124,6 +124,7 @@ struct cj_cpool_s {
     //常量池大小
     u2 length;
     unsigned char **cache;
+    u4 tail_offset;
 
     cj_cp_entry_t **entries;
     u2 entries_len;

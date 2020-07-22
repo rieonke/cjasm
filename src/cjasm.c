@@ -54,60 +54,6 @@ long cj_load_file(char *path, unsigned char **buf) {
     return len;
 }
 
-void cj_class_free(cj_class_t *ctx) {
-    if (ctx == NULL) return;
-    cj_sfree((void *) privc(ctx)->buf);
-    cj_sfree(privc(ctx)->cpool->offsets);
-    cj_sfree(privc(ctx)->cpool->types);
-
-    cj_method_set_free(privc(ctx)->method_set);
-    cj_field_set_free(privc(ctx)->field_set);
-
-    cj_attribute_set_free(privc(ctx)->attribute_set);
-    if (privc(ctx)->method_attribute_sets != NULL) {
-        for (int i = 0; i < ctx->method_count; ++i) {
-            cj_attribute_set_free(privc(ctx)->method_attribute_sets[i]);
-        }
-        cj_sfree(privc(ctx)->method_attribute_sets);
-    }
-
-    if (privc(ctx)->field_attribute_sets != NULL) {
-
-        for (int i = 0; i < ctx->field_count; ++i) {
-            cj_attribute_set_free(privc(ctx)->field_attribute_sets[i]);
-        }
-        cj_sfree(privc(ctx)->field_attribute_sets);
-    }
-
-    if (privc(ctx)->cpool->entries != NULL) {
-        for (int i = 0; i < privc(ctx)->cpool->entries_len; ++i) {
-            cj_cp_entry_t *entry = privc(ctx)->cpool->entries[i];
-            if (entry == NULL) continue;
-            free(entry->data);
-            free(entry);
-        }
-        free(privc(ctx)->cpool->entries);
-    }
-
-    for (int i = 0; i < privc(ctx)->cpool->length; ++i) {
-        if (privc(ctx)->cpool->cache[i] != NULL) {
-            free(privc(ctx)->cpool->cache[i]);
-            privc(ctx)->cpool->cache[i] = NULL;
-        }
-    }
-
-    if (privc(ctx)->annotation_set != NULL) {
-        cj_annotation_set_free(privc(ctx)->annotation_set);
-    }
-    cj_sfree((char *) ctx->name);
-    cj_sfree((char *) ctx->package);
-    cj_sfree((char *) ctx->raw_package);
-
-    cj_sfree(privc(ctx)->cpool->cache);
-    cj_sfree(privc(ctx));
-    cj_sfree(ctx);
-}
-
 u2 cj_class_get_field_count(cj_class_t *ctx) {
     return ctx->field_count;
 }

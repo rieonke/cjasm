@@ -176,7 +176,7 @@ bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len) {
         u4 body_len = privc(ctx)->buf_len - privc(ctx)->header;
 
         *len = body_len + buf->length + 8;
-        *out = malloc(sizeof(u1) * *len);
+        *out = malloc(sizeof(u1) * *len); //todo 覆盖所有未初始化的字节
 
         cj_wu4(*out, 0xCAFEBABE);
         cj_wu2(*out + 4, 0);
@@ -214,13 +214,19 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
 
 CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str raw) {
 
+    if (privc(ctx)->initialized) {
+        cj_sfree((char *) ctx->name);
+        cj_sfree((char *) ctx->package);
+        cj_sfree((char *) ctx->raw_package);
+    }
+
     ctx->raw_name = raw;
 
     ctx->name = (const_str) strdup((char *) ctx->raw_name);
     cj_str_replace(ctx->name, strlen((char *) ctx->name), '/', '.');
     char *short_name = strrchr((char *) ctx->raw_name, '/');
     ctx->short_name = short_name ? (const_str) short_name + 1 : ctx->raw_name;
-    int package_len = (int) (ctx->short_name - ctx->raw_name);
+    int package_len = (int) (ctx->short_name - ctx->raw_name) - 1;
     ctx->package = (const_str) strndup((char *) ctx->name, package_len);
     ctx->raw_package = (const_str) strdup((char *) ctx->package);
 
@@ -228,9 +234,6 @@ CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str raw) {
         cj_str_replace(ctx->raw_package, package_len, '.', '/');
     }
 
-//    ctx->name = (const_str) strdup((char *) ctx->raw_name);
-//    cj_str_replace(ctx->name, strlen((char *) ctx->name), '/', '.');
-//    ctx->short_name = (const_str) strrchr((char *) ctx->raw_name, '/') + 1;
 }
 
 cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
@@ -277,6 +280,7 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     cls->priv = priv;
 
     //cj_class_priv_t初始化
+    privc(cls)->initialized = false;
     privc(cls)->dirty = 0;
     privc(cls)->header = header;
     privc(cls)->this_class = this_class;
@@ -296,6 +300,8 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
 
     const_str raw = cj_cp_get_str(cls, name_index);
     cj_class_update_name(cls, raw);
+
+    privc(cls)->initialized = true;
 
     return cls;
 }

@@ -2,10 +2,13 @@
 // Created by Rieon Ke on 2020/7/21.
 //
 
+#include "class.h"
+
 #include <cjasm.h>
 #include <assert.h>
 #include "util.h"
 #include "cpool.h"
+#include "field.h"
 #include "descriptor.h"
 
 #define CJ_CLASS_NAME_DIRTY 0x1
@@ -36,7 +39,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     u2 fields_count;
     u2 attributes_count;
 
-    cj_field_set_t *field_set = NULL;
+    u4 *field_offsets = NULL;
     cj_method_set_t *method_set = NULL;
 
     cj_attribute_set_t *class_attribute_set = NULL;
@@ -50,16 +53,12 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     offset += 2;
 
     if (fields_count > 0) {
-        field_set = malloc(sizeof(cj_field_set_t));
-        field_set->index = 0;
-        field_set->count = fields_count;
-        field_set->cache = NULL;
-        field_set->offsets = malloc(sizeof(u4) * fields_count);
+        field_offsets = malloc(sizeof(u4) * fields_count);
 
         field_attribute_sets = malloc(sizeof(cj_attribute_set_t *) * fields_count);
 
         for (int i = 0; i < fields_count; ++i) {
-            field_set->offsets[i] = offset;
+            field_offsets[i] = offset;
 
             cj_attribute_set_t *attribute_set = NULL;
 
@@ -157,7 +156,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     ctx->interface_count = interfaces_count;
     ctx->attr_count = attributes_count;
 
-    privc(ctx)->field_set = field_set;
+    privc(ctx)->field_group = cj_field_group_new(fields_count, field_offsets);
     privc(ctx)->method_set = method_set;
     privc(ctx)->attribute_set = class_attribute_set;
 
@@ -260,8 +259,8 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     for (int i = 0; i < cpool->classes_len; ++i) {
         u2 idx = cpool->classes[i];
         const_str class_name = cj_cp_get_str(ctx, idx);
-        if (strcmp((char*)class_name, (char*)old_name) == 0) {
-            cj_cp_update_str(ctx, new_name, strlen((char*)new_name), idx);
+        if (strcmp((char *) class_name, (char *) old_name) == 0) {
+            cj_cp_update_str(ctx, new_name, strlen((char *) new_name), idx);
         }
     }
 
@@ -372,7 +371,7 @@ void cj_class_free(cj_class_t *ctx) {
     cj_sfree(privc(ctx)->cpool->types);
 
     cj_method_set_free(privc(ctx)->method_set);
-    cj_field_set_free(privc(ctx)->field_set);
+    cj_field_set_free(privc(ctx)->field_group);
 
     cj_attribute_set_free(privc(ctx)->attribute_set);
     if (privc(ctx)->method_attribute_sets != NULL) {
@@ -403,3 +402,12 @@ void cj_class_free(cj_class_t *ctx) {
     cj_sfree(ctx);
 }
 
+cj_field_t *cj_class_get_field_by_name(cj_class_t *ctx, const_str name) {
+    if (ctx == NULL || privc(ctx) == NULL || privc(ctx)->field_group == NULL) {
+        return NULL;
+    }
+
+    cj_field_group_t *set = privc(ctx)->field_group;
+    cj_field_t *field = cj_field_group_get_by_name(ctx, set, name);
+    return field;
+}

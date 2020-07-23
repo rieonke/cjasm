@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <sys/types.h>
 
 #if defined(__APPLE__)
@@ -83,7 +84,6 @@ typedef struct cj_method_priv_s cj_method_priv_t;
 typedef struct cj_field_priv_s cj_field_priv_t;
 typedef struct cj_attribute_set_s cj_attribute_set_t;
 typedef struct cj_method_set_s cj_method_set_t;
-typedef struct cj_field_set_s cj_field_set_t;
 typedef struct cj_annotation_set_s cj_annotation_set_t;
 typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
@@ -91,6 +91,7 @@ typedef struct cj_code_iter_s cj_code_iter_t;
 typedef struct cj_insn_s cj_insn_t;
 typedef struct cj_cpool_s cj_cpool_t;
 typedef struct cj_buf_s cj_buf_t;
+typedef struct cj_field_group_s cj_field_group_t;
 
 struct cj_buf_s {
     unsigned char *buf;
@@ -114,8 +115,15 @@ struct name {                        \
 CJ_CACHEABLE_SET(cj_annotation_set_s, cj_annotation_t)
 CJ_CACHEABLE_SET(cj_attribute_set_s, cj_attribute_t)
 CJ_CACHEABLE_SET(cj_method_set_s, cj_method_t)
-CJ_CACHEABLE_SET(cj_field_set_s, cj_field_t)
+//CJ_CACHEABLE_SET(cj_field_set_s, cj_field_t)
 
+
+struct cj_field_group_s {
+    u2 count;
+    u4 *offsets;
+    cj_field_t **fetched;
+    struct hashmap_s *map;
+};
 struct cj_cpool_s {
     //常量类型数组
     u1 *types;
@@ -152,7 +160,7 @@ struct cj_class_priv_s {
     u2 this_class;
     u2 super_class;
 
-    cj_field_set_t *field_set;
+    cj_field_group_t *field_group;
     cj_attribute_set_t **field_attribute_sets;
 
     cj_method_set_t *method_set;
@@ -259,6 +267,15 @@ enum cj_cp_type {
 };
 //@formatter:on
 
+#define cj_strcmp(str1, str2) (strcmp((char*)(str1), (char*)(str2)) == 0)
+
+#define cj_n2pow(v) \
+    v--;            \
+    for (size_t _cj_n2pow_i_ = 1; _cj_n2pow_i_ < sizeof(v) * CHAR_BIT; _cj_n2pow_i_ *= 2) { \
+        v |= v >> _cj_n2pow_i_;       \
+    }                  \
+    ++v
+
 CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_ptr, u4 *out_offset);
 
 CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf_ptr ev_ptr, u4 *out_offset);
@@ -274,10 +291,6 @@ CJ_INTERNAL void cj_attribute_set_free(cj_attribute_set_t *set);
 CJ_INTERNAL cj_method_t *cj_method_set_get(cj_class_t *ctx, cj_method_set_t *set, u2 idx);
 
 CJ_INTERNAL void cj_method_set_free(cj_method_set_t *set);
-
-CJ_INTERNAL cj_field_t *cj_field_set_get(cj_class_t *ctx, cj_field_set_t *set, u2 idx);
-
-CJ_INTERNAL void cj_field_set_free(cj_field_set_t *set);
 
 CJ_INTERNAL void cj_field_free(cj_field_t *field);
 

@@ -10,5 +10,6 @@
 
 bool cj_class_add_annotation(cj_class_t *ctx, cj_annotation_t *ann, bool visible);
 
+cj_field_t *cj_class_get_field_by_name(cj_class_t *ctx, const_str name);
 
 #endif //CJASM_CLASS_H

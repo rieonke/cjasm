@@ -8,6 +8,7 @@
 #include "cjasm.h"
 #include "../src/util.h"
 #include "../src/descriptor.h"
+#include "../src/class.h"
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -55,9 +56,15 @@ void test_check_class_name(void **state) {
 void test_check_field(void **state) {
 
     cj_field_t *field = cj_class_get_field(CTX, 0);
+    cj_field_t *field1 = cj_class_get_field_by_name(CTX, (const_str) "name");
+
+    cj_field_t *field303 = cj_class_get_field_by_name(CTX, (const_str) "name303");
+    assert_non_null(field303);
+    assert_ptr_equal(field, field1);
 
     const unsigned char *name = cj_field_get_name(field);
     assert_string_equal(name, "name");
+
 
     cj_field_set_name(field, (const unsigned char *) "__reserved__test__hello");
 
@@ -169,6 +176,17 @@ void test_check_cj_cp_put_str(void **state) {
     assert_string_equal(name1, name);
 }
 
+void test_check_is_pow_of_2(void **state) {
+
+    for (int i = 1; i < 1000000; ++i) {
+        int x = i;
+        cj_n2pow(x);
+        assert((x != 0) && ((x & (x - 1)) == 0));
+    }
+
+}
+
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -180,6 +198,7 @@ int main(void) {
             cmocka_unit_test(test_check_method),
             cmocka_unit_test(test_check_field),
             cmocka_unit_test(test_descriptor_parse),
+            cmocka_unit_test(test_check_is_pow_of_2),
             cmocka_unit_test(test_check_cj_cp_put_str),
     };
 

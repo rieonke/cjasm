@@ -285,9 +285,11 @@ const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
     //先判断当前条目是否已经被更改，如果已经被更改，则获取被更改后的值
     //如果该索引在原有常量池范围内，则在原有的常量池中查找
     //否则如果索引已经超过了原有常量池的大小，则从新增常量数组中查找.
-    u2 touched_idx = cpool->touched[idx];
-    if (touched_idx != 0) {
-        idx = touched_idx;
+    if (cpool->length > idx) {
+        u2 touched_idx = cpool->touched[idx];
+        if (touched_idx != 0) {
+            idx = touched_idx;
+        }
     }
 
     if (cpool->length > idx) {

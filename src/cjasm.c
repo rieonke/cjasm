@@ -5,6 +5,7 @@
 #include "cjasm.h"
 #include "descriptor.h"
 #include "./util.h"
+#include "field.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -85,11 +86,11 @@ cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx) {
     if (ctx->field_count <= 0 ||
         idx >= ctx->field_count ||
         privc(ctx) == NULL ||
-        privc(ctx)->field_set == NULL) {
+        privc(ctx)->field_group == NULL) {
         return NULL;
     }
 
-    return cj_field_set_get(ctx, privc(ctx)->field_set, idx);
+    return cj_field_group_get(ctx, privc(ctx)->field_group, idx);
 }
 
 const_str cj_field_get_name(cj_field_t *field) {

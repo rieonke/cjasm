@@ -397,53 +397,6 @@ CJ_INTERNAL void cj_method_set_free(cj_method_set_t *set) {
     cj_sfree(set);
 }
 
-CJ_INTERNAL cj_field_t *cj_field_set_get(cj_class_t *ctx, cj_field_set_t *set, u2 idx) {
-
-    if (set->cache == NULL) {
-        //初始化字段缓存
-        set->cache = calloc(sizeof(cj_field_t *), ctx->field_count);
-    }
-
-    if (set->cache[idx] == NULL) {
-        //按需初始化字段，并放入缓存中.
-        u4 offset = set->offsets[idx];
-        u2 access_flags = cj_ru2(privc(ctx)->buf + offset);
-        u2 name_index = cj_ru2(privc(ctx)->buf + offset + 2);
-        u2 descriptor_index = cj_ru2(privc(ctx)->buf + offset + 4);
-        u2 attributes_count = cj_ru2(privc(ctx)->buf + offset + 6);
-
-        cj_field_t *field = malloc(sizeof(cj_field_t));
-        field->access_flags = access_flags;
-        field->index = idx;
-        field->klass = ctx;
-        field->name = cj_cp_get_str(ctx, name_index);
-        field->descriptor = cj_cp_get_str(ctx, descriptor_index);
-        field->attribute_count = attributes_count;
-        field->priv = calloc(1, sizeof(cj_field_priv_t));
-        privf(field)->offset = offset;
-        privf(field)->attribute_set = privc(ctx)->field_attribute_sets[idx];
-        privf(field)->annotation_set = NULL;
-        privf(field)->annotation_set_initialized = false;
-
-        set->cache[idx] = field;
-    }
-
-    return set->cache[idx];
-
-}
-
-CJ_INTERNAL void cj_field_set_free(cj_field_set_t *set) {
-
-    if (set == NULL) return;
-    cj_sfree(set->offsets);
-    if (set->cache != NULL) {
-        for (int i = 0; i < set->count; ++i) {
-            cj_field_free(set->cache[i]);
-        }
-    }
-    cj_sfree(set->cache);
-    cj_sfree(set);
-}
 
 
 cj_annotation_t *cj_annotation_set_get(cj_class_t *ctx, cj_annotation_set_t *set, u2 idx) {

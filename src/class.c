@@ -29,6 +29,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
     const_str ptr = privc(ctx)->buf;
     u4 offset = privc(ctx)->header + 6;
+    cj_cpool_t *cpool = privc(ctx)->cpool;
 
     u4 methods_count;
     u2 interfaces_count;
@@ -62,6 +63,8 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
             cj_attribute_set_t *attribute_set = NULL;
 
+            u2 descriptor_index = cj_ru2(ptr + offset + 4);
+            cpool->descriptors[cpool->descriptors_len++] = descriptor_index;
             u4 attributes_length = cj_ru2(ptr + offset + 6);
             offset += 8;
 
@@ -103,6 +106,8 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
             cj_attribute_set_t *attribute_set = NULL;
 
+            u2 descriptor_index = cj_ru2(ptr + offset + 4);
+            cpool->descriptors[cpool->descriptors_len++] = descriptor_index;
             u4 attributes_length = cj_ru2(ptr + offset + 6);
             offset += 8;
 
@@ -170,7 +175,7 @@ bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len) {
         memcpy(*out, privc(ctx)->buf, *len);
         return true;
     } else {
-        cj_buf_t *buf = cj_cp_to_buf(ctx);
+        cj_mem_buf_t *buf = cj_cp_to_buf2(ctx);
         assert(buf != NULL);
 
         u4 offset = 8 + buf->length;
@@ -180,27 +185,46 @@ bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len) {
         *out = malloc(sizeof(u1) * *len); //todo 覆盖所有未初始化的字节
 
         cj_wu4(*out, 0xCAFEBABE);
-        cj_wu2(*out + 4, 0);
-        cj_wu2(*out + 8, 52);
+        cj_wu2(*out + 4, ctx->minor_version);
+        cj_wu2(*out + 6, ctx->major_version);
 
-        memcpy(*out + 8, buf->buf, buf->length);
+        memcpy(*out + 8, buf->data, buf->length);
         memcpy(*out + offset, privc(ctx)->buf + privc(ctx)->header, body_len);
 
-        free(buf->buf);
+        free(buf->data);
         free(buf);
     }
     return false;
 }
 
-unsigned char *cj_descriptor_replace_type(const_str descriptor, const_str old_element, const_str new_element) {
+const_str
+cj_descriptor_replace_type(const_str descriptor, const_str old_element, const_str new_element, bool *touched) {
     cj_descriptor_t *desc = cj_descriptor_parse(descriptor, strlen((char *) descriptor));
+
+    *touched = false;
     for (int i = 0; i < desc->parameter_count; ++i) {
-        //todo replace
+        unsigned char *str = desc->parameter_types[i];
+        if (strcmp((char *) str, (char *) old_element) == 0) {
+            free(str);
+            desc->parameter_types[i] = (unsigned char *) strdup((char *) new_element);
+            if (!*touched) *touched = true;
+        }
     }
 
-    //todo replace type
+    if (strcmp((char *) desc->type, (char *) old_element) == 0) {
+        free(desc->type);
+        desc->type = (unsigned char *) strdup((char *) new_element);
+        if (!*touched) *touched = true;
+    }
 
-    return cj_descriptor_to_string(desc);
+    if (*touched) {
+        unsigned char *str = cj_descriptor_to_string(desc);
+        cj_descriptor_free(desc);
+        return str;
+    }
+
+    cj_descriptor_free(desc);
+    return descriptor;
 }
 
 void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
@@ -218,16 +242,27 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     u2 index = 0;
     const_str new_name = cj_cp_put_str(ctx, t_name, strlen((char *) t_name), &index);
     privc(ctx)->dirty |= CJ_CLASS_NAME_DIRTY;
-    cj_cp_update_class(ctx, privc(ctx)->this_class, index);
 
-    //find all descriptor
+    // 替换所有包含此类名的descriptor
     cj_cpool_t *cpool = privc(ctx)->cpool;
     for (int i = 0; i < cpool->descriptors_len; ++i) {
+        bool touched = false;
         u2 idx = cpool->descriptors[i];
         const_str descriptor = cj_cp_get_str(ctx, idx);
+        const_str new_desc = cj_descriptor_replace_type(descriptor, old_name, new_name, &touched);
+        if (touched) {
+            cj_cp_update_str(ctx, new_desc, strlen((char *) new_desc), idx);
+            free((char *) new_desc);
+        }
+    }
 
-        unsigned char *new_desc = cj_descriptor_replace_type(descriptor, old_name, new_name);
-        printf("%s\n", new_desc); //todo impl this
+//    替换所有包含此类名的类名定义
+    for (int i = 0; i < cpool->classes_len; ++i) {
+        u2 idx = cpool->classes[i];
+        const_str class_name = cj_cp_get_str(ctx, idx);
+        if (strcmp((char*)class_name, (char*)old_name) == 0) {
+            cj_cp_update_str(ctx, new_name, strlen((char*)new_name), idx);
+        }
     }
 
 

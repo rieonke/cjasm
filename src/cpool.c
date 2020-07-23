@@ -4,62 +4,109 @@
 
 #include <math.h>
 #include "cpool.h"
+#include "mem_buf.h"
 
-#define CJ_BUFFER_SIZE 1024
+cj_mem_buf_t *cj_cp_to_buf2(cj_class_t *ctx) {
 
-cj_buf_t *cj_cp_to_buf(cj_class_t *ctx) {
+    cj_mem_buf_t *buf = cj_mem_buf_new();
 
-    //copy original buf
-    u1 *original_buf = NULL;
-    u4 original_cp_len = privc(ctx)->header - 10;
+    buf_ptr ptr = privc(ctx)->buf;
     cj_cpool_t *cpool = privc(ctx)->cpool;
-    u2 cp_size = cpool->length;
-    original_buf = malloc(sizeof(u1) * (original_cp_len + 2));
-    memcpy(original_buf + 2, privc(ctx)->buf + 10, original_cp_len);
-    u4 cp_len = original_cp_len + 2;
+    u2 cpool_len = cpool->length; //常量池从1开始
 
-    char buffer[CJ_BUFFER_SIZE] = {0};
-    int buffer_pos = 0;
+    u4 start = 10;
+    u4 stop = 0;
 
+    u2 *copied_indexes = calloc(cpool->entries_len, sizeof(u2));
+
+    cj_mem_buf_write_u2(buf, 0);
+
+#undef move
 #define move() \
-      original_buf = realloc(original_buf, (cp_len+ buffer_pos) * sizeof(u1)); \
-      memcpy(original_buf + cp_len,buffer,buffer_pos);         \
-      cp_len+=buffer_pos;                                                    \
+      if (out_buf == NULL) { \
+         out_buf = malloc(sizeof(char) * out_buf_len);\
+      }else {  \
+         out_buf = realloc(out_buf, sizeof(char ) * (out_buf_len + buffer_pos)); \
+      }\
+      memcpy(out_buf + out_buf_len, buffer, buffer_pos);      \
+      out_buf_len += buffer_pos;                   \
       buffer_pos = 0;
+
+    //find untouched
+    for (int i = 1; i < cpool->length; ++i) {
+
+        u2 new_idx = cpool->touched[i];
+        if (new_idx == 0) {
+            //find next entry index
+            if (i != cpool_len - 1) {
+                stop = cpool->offsets[i + 1] - 1;
+                continue;
+            } else {
+                stop = cpool->tail_offset;
+            }
+        }
+
+        //1. 拷贝上一分支累积的数据
+        u4 to_cpoy = stop - start;
+        if (to_cpoy > 0) {
+            cj_mem_buf_write_str(buf, (char *) ptr + start, to_cpoy);
+            // memcpy(buffer + buffer_pos, ptr + start, to_cpoy);
+            // buffer_pos += to_cpoy;
+        }
+
+        if (new_idx == 0) continue;
+        start = cpool->offsets[i + 1] - 1;
+
+
+        u1 tag = 0;
+        u2 len = 0;
+        unsigned char *data = NULL;
+        if (new_idx < cpool->length) { //如果当前的索引在旧有的常量池中，则直接拷贝原有的
+            //todo 假设只有utf类型
+            tag = CONSTANT_Utf8;
+            u4 offsets = cpool->offsets[new_idx];
+            len = cj_ru2(ptr + offsets);
+            data = (unsigned char *) ptr + offsets + 2;
+        } else {
+            new_idx = new_idx - cpool->length;
+            cj_cp_entry_t *entry = cpool->entries[new_idx];
+            tag = entry->tag;
+            len = entry->len;
+            data = entry->data;
+            copied_indexes[new_idx] = 1;
+        }
+
+
+        //2. 拷贝entries中的数据
+        cj_mem_buf_write_u1(buf, tag);
+
+        if (tag == CONSTANT_Utf8) {
+            cj_mem_buf_write_u2(buf, len);
+            cj_mem_buf_write_str(buf, (char *) data, len);
+        }
+
+    }
 
     //generate new buf
     for (int i = 0; i < cpool->entries_len; ++i) {
+        if (copied_indexes[i] == 1) continue;
         //fixme 检查buffer是否已满
         cj_cp_entry_t *entry = cpool->entries[i];
-        if (buffer_pos >= CJ_BUFFER_SIZE - 1) {
-            move()
-        }
 
-        buffer[buffer_pos++] = entry->tag;
+        cj_mem_buf_write_u1(buf, entry->tag);
+
         if (entry->tag == CONSTANT_Utf8) {
-            cp_size++;
-
-            cj_wu2(buffer + buffer_pos, entry->len);
-            buffer_pos += 2;
-
-            //如果字符串长度大于缓冲区长度，则分批拷贝
-            u2 len = 0;
-            while (len < entry->len) {
-                u2 available = CJ_BUFFER_SIZE - buffer_pos;
-                u2 copy_len = entry->len - len < available ? entry->len - len : available;
-
-                memcpy(buffer + buffer_pos, entry->data + len, copy_len);
-                buffer_pos += copy_len;
-                len += copy_len;
-                move()
-            }
+            cj_mem_buf_write_u2(buf, entry->len);
+            cj_mem_buf_write_str(buf, (char *) entry->data, entry->len);
         }
+
+        cpool_len++;
     }
 
-    *(u2 *) (original_buf) = btol16(cp_size);
-    cj_buf_t *buf = malloc(sizeof(cj_buf_t));
-    buf->length = cp_len;
-    buf->buf = original_buf;
+    free(copied_indexes);
+    cj_mem_buf_flush(buf);
+
+    cj_wu2(buf->data, cpool_len);
 
     return buf;
 }
@@ -76,6 +123,9 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
     u1 *cp_types = malloc(cp_len * sizeof(u1));
     u2 *descriptors = malloc(cp_len * sizeof(u2));
     u2 descriptors_len = 0;
+    u2 *classes = malloc(cp_len * sizeof(u2));
+    u2 classes_len = 0;
+
 
     int cur_cp_idx = 1;
     u4 cur_cp_offset = 10;
@@ -110,7 +160,13 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
               | CONSTANT_Module             |  19 | 2      |
               | CONSTANT_Package            |  20 | 2      |
               +-----------------------------+-----+--------+ */
-            case CONSTANT_Class:
+            case CONSTANT_Class: {
+                //2
+                u2 name_index = cj_ru2(buf + cur_cp_offset);
+                classes[classes_len++] = name_index;
+                cp_size = 2;
+                break;
+            }
             case CONSTANT_String:
                 //2
                 cp_size = 2;
@@ -178,13 +234,15 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
     cpool->length = cp_len;
     cpool->types = cp_types;
     cpool->cache = calloc(cp_len, sizeof(unsigned char *));
-    cpool->touched = calloc(cp_len, sizeof(u4));
+    cpool->touched = calloc(cp_len, sizeof(u2));
     cpool->offsets = cp_offsets;
     cpool->entries = NULL;
     cpool->entries_len = 0;
     cpool->tail_offset = cur_cp_offset;
     cpool->descriptors = descriptors;
     cpool->descriptors_len = descriptors_len;
+    cpool->classes = classes;
+    cpool->classes_len = classes_len;
     return cpool;
 }
 
@@ -200,12 +258,17 @@ void cj_cp_free(cj_cpool_t *cpool) {
         free(cpool->entries);
     }
 
-    for (int i = 0; i < cpool->length; ++i) {
+    for (int i = 1; i < cpool->length; ++i) {
         if (cpool->cache[i] != NULL) {
             free(cpool->cache[i]);
             cpool->cache[i] = NULL;
         }
     }
+
+    cj_sfree(cpool->classes);
+    cj_sfree(cpool->descriptors);
+
+
     cj_sfree(cpool->cache);
     cj_sfree(cpool->touched);
 
@@ -219,8 +282,13 @@ const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
         return NULL;
     }
 
+    //先判断当前条目是否已经被更改，如果已经被更改，则获取被更改后的值
     //如果该索引在原有常量池范围内，则在原有的常量池中查找
     //否则如果索引已经超过了原有常量池的大小，则从新增常量数组中查找.
+    u2 touched_idx = cpool->touched[idx];
+    if (touched_idx != 0) {
+        idx = touched_idx;
+    }
 
     if (cpool->length > idx) {
         if (cpool->cache[idx] == NULL) {
@@ -366,8 +434,18 @@ CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len,
     return entry->data;
 }
 
-CJ_INTERNAL bool cj_cp_update_str(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
-    return false;
+CJ_INTERNAL bool cj_cp_update_str(cj_class_t *ctx, const_str name, size_t len, u2 index) {
+
+    u2 new_idx = 0;
+    cj_cp_put_str(ctx, name, len, &new_idx);
+    if (new_idx == index) {
+        return false; //nothing changed
+    }
+
+    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cpool->touched[index] = new_idx;
+
+    return true;
 }
 
 CJ_INTERNAL bool cj_cp_update_class(cj_class_t *ctx, u2 idx, u2 name_idx) {

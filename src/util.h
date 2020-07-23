@@ -128,10 +128,13 @@ struct cj_cpool_s {
 
     cj_cp_entry_t **entries;
     u2 entries_len;
-    u4 *touched;
+    u2 *touched;
 
     u2 *descriptors;
     u2 descriptors_len;
+
+    u2 *classes;
+    u2 classes_len;
 
 };
 

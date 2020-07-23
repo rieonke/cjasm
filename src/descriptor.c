@@ -44,31 +44,31 @@ CJ_INTERNAL const char *cj_descriptor_type_to_str(unsigned char *type, int *olen
     *need_free = false;
     *olen = 1;
     if (strcmp((char *) type, "byte") == 0) {
-        return "B" ;
+        return "B";
     }
     if (strcmp((char *) type, "char") == 0) {
-        return "C" ;
+        return "C";
     }
     if (strcmp((char *) type, "double") == 0) {
-        return "D" ;
+        return "D";
     }
     if (strcmp((char *) type, "float") == 0) {
-        return "F" ;
+        return "F";
     }
     if (strcmp((char *) type, "int") == 0) {
-        return "I" ;
+        return "I";
     }
     if (strcmp((char *) type, "long") == 0) {
-        return "J" ;
+        return "J";
     }
     if (strcmp((char *) type, "short") == 0) {
-        return "S" ;
+        return "S";
     }
     if (strcmp((char *) type, "boolean") == 0) {
-        return "Z" ;
+        return "Z";
     }
     if (strcmp((char *) type, "void") == 0) {
-        return "V" ;
+        return "V";
     }
 
     size_t len = strlen((char *) type);
@@ -204,6 +204,7 @@ unsigned char *cj_descriptor_to_string(cj_descriptor_t *desc) {
     const char *res = cj_descriptor_type_to_str(desc->type, &len, &need_free);
     memcpy(buf + buf_pos, res, len);
     buf_pos += len;
+    cj_sfree((char *) res);
 
 
     unsigned char *out_str = malloc(sizeof(char) * buf_pos + 1);
@@ -212,8 +213,5 @@ unsigned char *cj_descriptor_to_string(cj_descriptor_t *desc) {
 
     return out_str;
 }
-
-
-
 
 

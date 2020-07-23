@@ -20,7 +20,7 @@ set_target_properties(cjasm-shared PROPERTIES OUTPUT_NAME cjasm)
 find_package(Java REQUIRED)
 include(UseJava)
 
-set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.8" "-target" "1.8")
+set(CMAKE_JAVA_COMPILE_FLAGS "-encoding" "UTF8" "-source" "1.8" "-target" "1.8")
 
 add_jar(test_java_jar test/resources/Test.java
         OUTPUT_NAME Test

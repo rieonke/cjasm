@@ -171,11 +171,6 @@ void test_check_cj_cp_put_str(void **state) {
 
 int main(void) {
 
-    int a = 65;
-    char c = a & 0xff;
-
-    printf("char is %c\n", c);
-
     const struct CMUnitTest tests[] = {
             cmocka_unit_test(test_check_access_flags),
             cmocka_unit_test(test_check_class_name),

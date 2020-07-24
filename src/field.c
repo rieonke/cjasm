@@ -82,8 +82,8 @@ CJ_INTERNAL cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *se
         privf(field)->head = head;
         privf(field)->tail = tail;
         privf(field)->dirty = 0;
-        privf(field)->attribute_set = privc(ctx)->field_attribute_sets[idx];
-        privf(field)->annotation_set = NULL;
+        privf(field)->attribute_group = privc(ctx)->field_attribute_groups[idx];
+        privf(field)->annotation_group = NULL;
         privf(field)->annotation_set_initialized = false;
 
         set->fetched[idx] = field;
@@ -137,8 +137,8 @@ CJ_INTERNAL void cj_field_free(cj_field_t *field) {
     if (field == NULL) {
         return;
     }
-    if (privf(field) != NULL && privf(field)->annotation_set != NULL) {
-        cj_annotation_group_free(privf(field)->annotation_set);
+    if (privf(field) != NULL && privf(field)->annotation_group != NULL) {
+        cj_annotation_group_free(privf(field)->annotation_group);
     }
     cj_sfree(privf(field));
     cj_sfree(field);
@@ -163,11 +163,11 @@ u2 cj_field_get_attribute_count(cj_field_t *field) {
 cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx) {
     if (field->klass == NULL ||
         field->attribute_count <= 0 ||
-        privf(field)->attribute_set == NULL ||
-        idx >= privf(field)->attribute_set->count) {
+        privf(field)->attribute_group == NULL ||
+        idx >= privf(field)->attribute_group->count) {
         return NULL;
     }
-    return cj_attribute_group_get(field->klass, privf(field)->attribute_set, idx);
+    return cj_attribute_group_get(field->klass, privf(field)->attribute_group, idx);
 }
 
 u2 cj_field_get_annotation_count(cj_field_t *field) {
@@ -179,13 +179,13 @@ u2 cj_field_get_annotation_count(cj_field_t *field) {
         return 0;
     }
 
-    if (privf(field)->annotation_set == NULL && !privf(field)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(field->klass, privf(field)->attribute_set, &privf(field)->annotation_set);
+    if (privf(field)->annotation_group == NULL && !privf(field)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(field->klass, privf(field)->attribute_group, &privf(field)->annotation_group);
         privf(field)->annotation_set_initialized = init;
     }
 
-    if (privf(field)->annotation_set == NULL) return 0;
-    return privf(field)->annotation_set->count;
+    if (privf(field)->annotation_group == NULL) return 0;
+    return privf(field)->annotation_group->count;
 }
 
 cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx) {
@@ -195,12 +195,12 @@ cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx) {
         return NULL;
     }
 
-    if (privf(field)->annotation_set == NULL && !privf(field)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(field->klass, privf(field)->attribute_set, &privf(field)->annotation_set);
+    if (privf(field)->annotation_group == NULL && !privf(field)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(field->klass, privf(field)->attribute_group, &privf(field)->annotation_group);
         privf(field)->annotation_set_initialized = init;
     }
 
-    return cj_annotation_group_get(field->klass, privf(field)->annotation_set, idx);
+    return cj_annotation_group_get(field->klass, privf(field)->annotation_group, idx);
 }
 
 

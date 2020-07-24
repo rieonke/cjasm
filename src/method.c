@@ -1167,8 +1167,8 @@ CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t 
         method->attribute_count = attributes_count;
         method->priv = calloc(sizeof(cj_method_priv_t), 1);
         privm(method)->offset = offset;
-        privm(method)->attribute_set = privc(ctx)->method_attribute_sets[idx];
-        privm(method)->annotation_set = NULL;
+        privm(method)->attribute_group = privc(ctx)->method_attribute_groups[idx];
+        privm(method)->annotation_group = NULL;
         privm(method)->annotation_set_initialized = false;
         privm(method)->code = NULL;
         privm(method)->descriptor = NULL;
@@ -1193,8 +1193,8 @@ CJ_INTERNAL void cj_method_group_free(cj_method_group_t *set) {
 
 CJ_INTERNAL void cj_method_free(cj_method_t *method) {
     if (method == NULL) return;
-    if (privm(method) != NULL && privm(method)->annotation_set != NULL) {
-        cj_annotation_group_free(privm(method)->annotation_set);
+    if (privm(method) != NULL && privm(method)->annotation_group != NULL) {
+        cj_annotation_group_free(privm(method)->annotation_group);
     }
 
     //因为方法的attribute_set在class中被释放，所以在此处不再释放
@@ -1225,12 +1225,12 @@ u2 cj_method_get_attribute_count(cj_method_t *method) {
 cj_attribute_t *cj_method_get_attribute(cj_method_t *method, u2 idx) {
     if (method->klass == NULL ||
         method->attribute_count <= 0 ||
-        privm(method)->attribute_set == NULL ||
-        privm(method)->attribute_set->count <= idx) {
+        privm(method)->attribute_group == NULL ||
+        privm(method)->attribute_group->count <= idx) {
         return NULL;
     }
 
-    return cj_attribute_group_get(method->klass, privm(method)->attribute_set, idx);
+    return cj_attribute_group_get(method->klass, privm(method)->attribute_group, idx);
 }
 
 u2 cj_method_get_annotation_count(cj_method_t *method) {
@@ -1242,14 +1242,14 @@ u2 cj_method_get_annotation_count(cj_method_t *method) {
         return 0;
     }
 
-    if (privm(method)->annotation_set == NULL && !privm(method)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(method->klass, privm(method)->attribute_set,
-                                             &privm(method)->annotation_set);
+    if (privm(method)->annotation_group == NULL && !privm(method)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(method->klass, privm(method)->attribute_group,
+                                             &privm(method)->annotation_group);
         privm(method)->annotation_set_initialized = init;
     }
 
-    if (privm(method)->annotation_set == NULL) return 0;
-    return privm(method)->annotation_set->count;
+    if (privm(method)->annotation_group == NULL) return 0;
+    return privm(method)->annotation_group->count;
 }
 
 cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx) {
@@ -1259,13 +1259,13 @@ cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx) {
         return NULL;
     }
 
-    if (privm(method)->annotation_set == NULL && !privm(method)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(method->klass, privm(method)->attribute_set,
-                                             &privm(method)->annotation_set);
+    if (privm(method)->annotation_group == NULL && !privm(method)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(method->klass, privm(method)->attribute_group,
+                                             &privm(method)->annotation_group);
         privm(method)->annotation_set_initialized = init;
     }
 
-    return cj_annotation_group_get(method->klass, privm(method)->annotation_set, idx);
+    return cj_annotation_group_get(method->klass, privm(method)->annotation_group, idx);
 }
 
 cj_code_t *cj_method_get_code(cj_method_t *method) {
@@ -1302,8 +1302,8 @@ cj_code_t *cj_method_get_code(cj_method_t *method) {
     u4 offset = 0;
     cj_class_t *ctx = method->klass;
 
-    for (int i = 0; i < privm(method)->attribute_set->count; ++i) {
-        cj_attribute_t *attr = cj_attribute_group_get(method->klass, privm(method)->attribute_set, i);
+    for (int i = 0; i < privm(method)->attribute_group->count; ++i) {
+        cj_attribute_t *attr = cj_attribute_group_get(method->klass, privm(method)->attribute_group, i);
         if (attr->type == CJ_ATTR_Code) {
             offset = priva(attr)->offset;
         }

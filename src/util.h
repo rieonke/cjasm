@@ -162,14 +162,14 @@ struct cj_class_priv_s {
     u2 super_class;
 
     cj_field_group_t *field_group;
-    cj_attribute_group_t **field_attribute_sets;
+    cj_attribute_group_t **field_attribute_groups;
 
-    cj_method_group_t *method_set;
-    cj_attribute_group_t **method_attribute_sets;
+    cj_method_group_t *method_group;
+    cj_attribute_group_t **method_attribute_groups;
 
-    cj_attribute_group_t *attribute_set;
+    cj_attribute_group_t *attribute_group;
     bool annotation_set_initialized;
-    cj_annotation_group_t *annotation_set;
+    cj_annotation_group_t *annotation_group;
 
     bool initialized;
 };
@@ -177,8 +177,8 @@ struct cj_class_priv_s {
 struct cj_method_priv_s {
     u4 offset;
     bool annotation_set_initialized;
-    cj_annotation_group_t *annotation_set;
-    cj_attribute_group_t *attribute_set;
+    cj_annotation_group_t *annotation_group;
+    cj_attribute_group_t *attribute_group;
     cj_code_t *code;
     cj_descriptor_t *descriptor;
 };
@@ -188,8 +188,8 @@ struct cj_field_priv_s {
     u4 head;
     u4 tail;
     bool annotation_set_initialized;
-    cj_annotation_group_t *annotation_set;
-    cj_attribute_group_t *attribute_set;
+    cj_annotation_group_t *annotation_group;
+    cj_attribute_group_t *attribute_group;
 };
 
 struct cj_attribute_priv_s {

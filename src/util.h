@@ -119,7 +119,8 @@ CJ_CACHEABLE_SET(cj_method_group_s, cj_method_t)
 
 struct cj_field_group_s {
     u2 count;
-    u4 *offsets;
+    u4 *heads;
+    u4 *tails;
     cj_field_t **fetched;
     struct hashmap_s *map;
 };
@@ -183,7 +184,9 @@ struct cj_method_priv_s {
 };
 
 struct cj_field_priv_s {
-    u4 offset;
+    unsigned int dirty;
+    u4 head;
+    u4 tail;
     bool annotation_set_initialized;
     cj_annotation_group_t *annotation_set;
     cj_attribute_group_t *attribute_set;
@@ -275,7 +278,6 @@ enum cj_cp_type {
         v |= v >> _cj_n2pow_i_;       \
     }                  \
     ++v
-
 
 
 #endif //CJASM_UTIL_H

@@ -10,7 +10,7 @@
 #include "util.h"
 #include "hashmap.h"
 
-cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets);
+cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets, u4 *tails);
 
 cj_field_t *cj_field_group_get_by_name(cj_class_t *ctx, cj_field_group_t *set, const_str name);
 

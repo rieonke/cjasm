@@ -10,7 +10,7 @@
 #include "cpool.h"
 
 
-cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets) {
+cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets, u4 *tails) {
     if (count == 0 || offsets == NULL) return NULL;
 
     u2 mv = count;
@@ -24,9 +24,10 @@ cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets) {
     }
     cj_field_group_t *group = malloc(sizeof(cj_field_group_t));
     group->count = count;
-    group->offsets = offsets;
+    group->heads = offsets;
     group->fetched = calloc(count, sizeof(cj_field_t *));
     group->map = map;
+    group->tails = tails;
 
     return group;
 }
@@ -39,7 +40,7 @@ cj_field_t *cj_field_group_get_by_name(cj_class_t *ctx, cj_field_group_t *set, c
     if (hashmap_num_entries(set->map) == 0) {
         //initialize map
         for (int i = 0; i < set->count; ++i) {
-            u4 offset = set->offsets[i];
+            u4 offset = set->heads[i];
             u2 name_index = cj_ru2(privc(ctx)->buf + offset + 2);
             const_str name_str = cj_cp_get_str(ctx, name_index);
             hashmap_put(set->map, (char *) name_str, strlen((char *) name_str), (void *) (1L + i));
@@ -63,11 +64,12 @@ CJ_INTERNAL cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *se
 
     if (set->fetched[idx] == NULL) {
         //按需初始化字段，并放入缓存中.
-        u4 offset = set->offsets[idx];
-        u2 access_flags = cj_ru2(privc(ctx)->buf + offset);
-        u2 name_index = cj_ru2(privc(ctx)->buf + offset + 2);
-        u2 descriptor_index = cj_ru2(privc(ctx)->buf + offset + 4);
-        u2 attributes_count = cj_ru2(privc(ctx)->buf + offset + 6);
+        u4 head = set->heads[idx];
+        u4 tail = set->tails[idx];
+        u2 access_flags = cj_ru2(privc(ctx)->buf + head);
+        u2 name_index = cj_ru2(privc(ctx)->buf + head + 2);
+        u2 descriptor_index = cj_ru2(privc(ctx)->buf + head + 4);
+        u2 attributes_count = cj_ru2(privc(ctx)->buf + head + 6);
 
         cj_field_t *field = malloc(sizeof(cj_field_t));
         field->access_flags = access_flags;
@@ -77,7 +79,9 @@ CJ_INTERNAL cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *se
         field->descriptor = cj_cp_get_str(ctx, descriptor_index);
         field->attribute_count = attributes_count;
         field->priv = calloc(1, sizeof(cj_field_priv_t));
-        privf(field)->offset = offset;
+        privf(field)->head = head;
+        privf(field)->tail = tail;
+        privf(field)->dirty = 0;
         privf(field)->attribute_set = privc(ctx)->field_attribute_sets[idx];
         privf(field)->annotation_set = NULL;
         privf(field)->annotation_set_initialized = false;
@@ -92,7 +96,8 @@ CJ_INTERNAL cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *se
 CJ_INTERNAL void cj_field_set_free(cj_field_group_t *set) {
 
     if (set == NULL) return;
-    cj_sfree(set->offsets);
+    cj_sfree(set->heads);
+    cj_sfree(set->tails);
     if (set->fetched != NULL) {
         for (int i = 0; i < set->count; ++i) {
             cj_field_free(set->fetched[i]);
@@ -105,7 +110,27 @@ CJ_INTERNAL void cj_field_set_free(cj_field_group_t *set) {
 }
 
 cj_mem_buf_t *cj_field_to_buf(cj_field_t *field) {
-    return NULL;
+    if (field == NULL || privf(field) == NULL) return NULL;
+
+    cj_mem_buf_t *buf = NULL;
+
+    if (privf(field)->dirty == 0) {
+        u4 head = privf(field)->head;
+        u4 tail = privf(field)->tail;
+        if (head >= tail) {
+            return NULL;
+        }
+
+        buf = cj_mem_buf_new();
+        cj_mem_buf_write_str(buf, (char *) privc(field->klass)->buf + head, tail - head);
+        return buf;
+    } else {
+        if ((privf(field)->dirty & 0x8000) == 0x8000) { //已被删除
+            return NULL;
+        }
+    }
+
+    return buf;
 }
 
 CJ_INTERNAL void cj_field_free(cj_field_t *field) {

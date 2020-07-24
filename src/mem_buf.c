@@ -99,3 +99,25 @@ void cj_mem_buf_write_str(cj_mem_buf_t *buf, char *str, int len) {
 
 }
 
+void cj_mem_buf_write_buf(cj_mem_buf_t *buf, cj_mem_buf_t *buf1) {
+    cj_mem_buf_flush(buf1);
+    cj_mem_buf_check_full(buf, buf1->length);
+
+    u4 w_len = 0;
+    u4 len = buf1->length;
+    while (w_len < len) {
+        u2 available = CJ_BUFFER_SIZE - buf->pos;
+        u2 copy_len = len - w_len < available ? len - w_len : available;
+
+        memcpy(buf->buf + buf->pos, buf1->data + w_len, copy_len);
+        buf->pos += copy_len;
+        w_len += copy_len;
+
+        cj_mem_buf_check_full(buf, copy_len);
+    }
+}
+
+void cj_mem_buf_free(cj_mem_buf_t *buf) {
+    cj_sfree(buf->data);
+    cj_sfree(buf);
+}

@@ -45,5 +45,9 @@ void cj_mem_buf_write_i8(cj_mem_buf_t *buf, i8 data);
 
 void cj_mem_buf_write_str(cj_mem_buf_t *buf, char *str, int len);
 
+void cj_mem_buf_write_buf(cj_mem_buf_t *buf, cj_mem_buf_t *buf1);
+
+void cj_mem_buf_free(cj_mem_buf_t *buf);
+
 
 #endif //CJASM_MEM_BUF_H

@@ -484,15 +484,6 @@ long cj_load_file(char *path, unsigned char **buf);
 cj_class_t *cj_class_new(unsigned char *buf, size_t len);
 
 /**
- * 生成字节码.
- * @param ctx cj 类
- * @param out 输出字节码，使用后应被释放，出现错误时，输出为NULL
- * @param len 输出字节码长度，出现错误时，输出为0
- * @return 是否成功
- */
-bool cj_class_to_buf(cj_class_t *ctx, unsigned char **out, size_t *len);
-
-/**
  * free a cj class context
  * @param ctx class context
  */

@@ -8,6 +8,7 @@
 #include <string.h>
 #include "cjasm.h"
 #include "../src/cpool.h"
+#include "../src/class.h"
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -56,22 +57,28 @@ void test_check_write(void **state) {
 
     assert_string_equal(CTX->name, "Test1");
 
+    for (int i = 0; i < CTX->field_count; ++i) {
+        cj_field_t *field = cj_class_get_field(CTX, i);
+        if (strstr((char *) field->name, "name") == (char *) field->name && strlen((char *) field->name) > 4) {
+            cj_class_remove_field(CTX, i);
+        }
+    }
 
-    size_t len = 0;
-    unsigned char *out = NULL;
-    cj_class_to_buf(CTX, &out, &len);
 
-    cj_class_t *cls = cj_class_new(out, len);
+    cj_mem_buf_t *out = cj_class_to_buf(CTX);
+    size_t len = out->length;
+
+    cj_class_t *cls = cj_class_new(out->data, out->length);
 //    const_str str1 = cj_cp_get_str(cls, idx);
 //    assert_string_equal(str,str1);
 
-    FILE *f = fopen("test_modified.class", "wb");
-    fwrite(out, sizeof(u1), len, f);
+    FILE *f = fopen("Test1.class", "wb");
+    fwrite(out->data, sizeof(u1), len, f);
     fclose(f);
 
+    cj_mem_buf_free(out);
 
     assert_non_null(cls->name != NULL);
-    free(out);
     cj_class_free(cls);
 }
 

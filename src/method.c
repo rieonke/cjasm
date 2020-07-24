@@ -3,7 +3,11 @@
 //
 #include <assert.h>
 #include "cjasm.h"
+#include "descriptor.h"
 #include "util.h"
+#include "annotation.h"
+#include "method.h"
+#include "attribute.h"
 
 #define CJ_TEMP
 
@@ -1139,4 +1143,206 @@ CJ_INTERNAL void cj_insn_free(cj_insn_t *insn) {
     cj_sfree(insn);
 
 }
+
+CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t *set, u2 idx) {
+
+    if (set->cache == NULL) {
+        set->cache = calloc(sizeof(cj_method_t *), ctx->method_count);
+    }
+
+    if (set->cache[idx] == NULL) {
+        u4 offset = set->offsets[idx];
+
+        u2 access_flags = cj_ru2(privc(ctx)->buf + offset);
+        u2 name_index = cj_ru2(privc(ctx)->buf + offset + 2);
+        u2 descriptor_index = cj_ru2(privc(ctx)->buf + offset + 4);
+        u2 attributes_count = cj_ru2(privc(ctx)->buf + offset + 6);
+
+        cj_method_t *method = malloc(sizeof(cj_method_t));
+        method->access_flags = access_flags;
+        method->name = cj_cp_get_str(ctx, name_index);
+        method->descriptor = cj_cp_get_str(ctx, descriptor_index);
+        method->klass = ctx;
+        method->index = idx;
+        method->attribute_count = attributes_count;
+        method->priv = calloc(sizeof(cj_method_priv_t), 1);
+        privm(method)->offset = offset;
+        privm(method)->attribute_set = privc(ctx)->method_attribute_sets[idx];
+        privm(method)->annotation_set = NULL;
+        privm(method)->annotation_set_initialized = false;
+        privm(method)->code = NULL;
+        privm(method)->descriptor = NULL;
+
+        set->cache[idx] = method;
+    }
+
+    return set->cache[idx];
+}
+
+CJ_INTERNAL void cj_method_group_free(cj_method_group_t *set) {
+    if (set == NULL) return;
+    cj_sfree(set->offsets);
+    if (set->cache != NULL) {
+        for (int i = 0; i < set->count; ++i) {
+            cj_method_free(set->cache[i]);
+        }
+    }
+    cj_sfree(set->cache);
+    cj_sfree(set);
+}
+
+CJ_INTERNAL void cj_method_free(cj_method_t *method) {
+    if (method == NULL) return;
+    if (privm(method) != NULL && privm(method)->annotation_set != NULL) {
+        cj_annotation_group_free(privm(method)->annotation_set);
+    }
+
+    //因为方法的attribute_set在class中被释放，所以在此处不再释放
+
+    cj_sfree(privm(method)->code);
+
+    if (privm(method)->descriptor != NULL) {
+        cj_descriptor_free(privm(method)->descriptor);
+    }
+
+    cj_sfree(privm(method));
+    cj_sfree(method);
+}
+
+const_str cj_method_get_name(cj_method_t *method) {
+    return method->name;
+}
+
+u2 cj_method_get_access_flags(cj_method_t *method) {
+    return method->access_flags;
+}
+
+u2 cj_method_get_attribute_count(cj_method_t *method) {
+
+    return method->attribute_count;
+}
+
+cj_attribute_t *cj_method_get_attribute(cj_method_t *method, u2 idx) {
+    if (method->klass == NULL ||
+        method->attribute_count <= 0 ||
+        privm(method)->attribute_set == NULL ||
+        privm(method)->attribute_set->count <= idx) {
+        return NULL;
+    }
+
+    return cj_attribute_group_get(method->klass, privm(method)->attribute_set, idx);
+}
+
+u2 cj_method_get_annotation_count(cj_method_t *method) {
+
+    if (method == NULL ||
+        privm(method) == NULL ||
+        method->klass == NULL ||
+        method->attribute_count <= 0) {
+        return 0;
+    }
+
+    if (privm(method)->annotation_set == NULL && !privm(method)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(method->klass, privm(method)->attribute_set,
+                                             &privm(method)->annotation_set);
+        privm(method)->annotation_set_initialized = init;
+    }
+
+    if (privm(method)->annotation_set == NULL) return 0;
+    return privm(method)->annotation_set->count;
+}
+
+cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx) {
+    if (method == NULL ||
+        privm(method) == NULL ||
+        method->klass == NULL) {
+        return NULL;
+    }
+
+    if (privm(method)->annotation_set == NULL && !privm(method)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(method->klass, privm(method)->attribute_set,
+                                             &privm(method)->annotation_set);
+        privm(method)->annotation_set_initialized = init;
+    }
+
+    return cj_annotation_group_get(method->klass, privm(method)->annotation_set, idx);
+}
+
+cj_code_t *cj_method_get_code(cj_method_t *method) {
+
+    if (method == NULL ||
+        method->klass == NULL ||
+        privm(method) == NULL) {
+        return NULL;
+    }
+    if (privm(method)->code != NULL) {
+        return privm(method)->code;
+    }
+
+    /*
+     *
+     * Code_attribute {
+     *      u2 attribute_name_index;
+     *      u4 attribute_length;
+     *      u2 max_stack;
+     *      u2 max_locals;
+     *      u4 code_length;
+     *      u1 code[code_length];
+     *      u2 exception_table_length;
+     *      {   u2 start_pc;
+     *          u2 end_pc;
+     *          u2 handler_pc;
+     *          u2 catch_type;
+     *      } exception_table[exception_table_length];
+     *      u2 attributes_count;
+     *      attribute_info attributes[attributes_count];
+     *  }
+     *
+     */
+    u4 offset = 0;
+    cj_class_t *ctx = method->klass;
+
+    for (int i = 0; i < privm(method)->attribute_set->count; ++i) {
+        cj_attribute_t *attr = cj_attribute_group_get(method->klass, privm(method)->attribute_set, i);
+        if (attr->type == CJ_ATTR_Code) {
+            offset = priva(attr)->offset;
+        }
+    }
+
+    if (offset == 0) return NULL;
+    u2 max_stack = cj_ru2(privc(ctx)->buf + offset + 6);
+    u2 max_locals = cj_ru2(privc(ctx)->buf + offset + 8);
+    u4 code_length = cj_ru4(privc(ctx)->buf + offset + 10);
+    offset += 14;
+
+    cj_code_t *code = malloc(sizeof(cj_code_t));
+    code->offset = offset;
+    code->length = code_length;
+    code->max_stack = max_stack;
+    code->max_locals = max_locals;
+    code->method = method;
+
+    privm(method)->code = code;
+
+    return code;
+}
+
+cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method) {
+    if (method == NULL || method->descriptor == NULL || privm(method) == NULL) return NULL;
+    if (privm(method)->descriptor == NULL) {
+        privm(method)->descriptor = cj_descriptor_parse(method->descriptor, strlen((char *) method->descriptor));
+    }
+    return privm(method)->descriptor;
+}
+
+const_str cj_method_get_return_type(cj_method_t *method) {
+    cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
+    return descriptor->type;
+}
+
+u2 cj_method_get_parameter_count(cj_method_t *method) {
+    cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
+    return descriptor->parameter_count;
+}
+
 

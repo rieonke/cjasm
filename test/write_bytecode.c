@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "cjasm.h"
-#include "../src/util.h"
+#include "../src/cpool.h"
 #include <setjmp.h>
 #include <cmocka.h>
 

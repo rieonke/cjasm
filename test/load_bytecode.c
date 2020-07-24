@@ -11,6 +11,8 @@
 #include "../src/class.h"
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../src/method.h"
+#include "../src/cpool.h"
 
 
 #define TEST_CLASS "io/ticup/example/Test.class"
@@ -178,7 +180,7 @@ void test_check_cj_cp_put_str(void **state) {
 
 void test_check_is_pow_of_2(void **state) {
 
-    for (int i = 1; i < 1000000; ++i) {
+    for (int i = 1; i < 10000; ++i) {
         int x = i;
         cj_n2pow(x);
         assert((x != 0) && ((x & (x - 1)) == 0));

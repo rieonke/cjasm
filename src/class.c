@@ -10,6 +10,8 @@
 #include "cpool.h"
 #include "field.h"
 #include "descriptor.h"
+#include "attribute.h"
+#include "method.h"
 
 #define CJ_CLASS_NAME_DIRTY 0x1
 
@@ -40,11 +42,11 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     u2 attributes_count;
 
     u4 *field_offsets = NULL;
-    cj_method_set_t *method_set = NULL;
+    cj_method_group_t *method_set = NULL;
 
-    cj_attribute_set_t *class_attribute_set = NULL;
-    cj_attribute_set_t **field_attribute_sets = NULL;
-    cj_attribute_set_t **method_attribute_sets = NULL;
+    cj_attribute_group_t *class_attribute_set = NULL;
+    cj_attribute_group_t **field_attribute_sets = NULL;
+    cj_attribute_group_t **method_attribute_sets = NULL;
 
     interfaces_count = cj_ru2(ptr + offset);
     offset += 2 + interfaces_count * 2;
@@ -55,12 +57,12 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     if (fields_count > 0) {
         field_offsets = malloc(sizeof(u4) * fields_count);
 
-        field_attribute_sets = malloc(sizeof(cj_attribute_set_t *) * fields_count);
+        field_attribute_sets = malloc(sizeof(cj_attribute_group_t *) * fields_count);
 
         for (int i = 0; i < fields_count; ++i) {
             field_offsets[i] = offset;
 
-            cj_attribute_set_t *attribute_set = NULL;
+            cj_attribute_group_t *attribute_set = NULL;
 
             u2 descriptor_index = cj_ru2(ptr + offset + 4);
             cpool->descriptors[cpool->descriptors_len++] = descriptor_index;
@@ -69,7 +71,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
             if (attributes_length > 0) {
 
-                attribute_set = malloc(sizeof(cj_attribute_set_t));
+                attribute_set = malloc(sizeof(cj_attribute_group_t));
 
                 attribute_set->index = i;
                 attribute_set->count = attributes_length;
@@ -91,19 +93,19 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     offset += 2;
 
     if (methods_count > 0) {
-        method_set = malloc(sizeof(cj_method_set_t));
+        method_set = malloc(sizeof(cj_method_group_t));
         method_set->index = 0;
         method_set->count = methods_count;
         method_set->cache = NULL;
         method_set->offsets = malloc(sizeof(u4) * methods_count);
 
 
-        method_attribute_sets = malloc(sizeof(cj_attribute_set_t *) * methods_count);
+        method_attribute_sets = malloc(sizeof(cj_attribute_group_t *) * methods_count);
 
         for (int i = 0; i < methods_count; ++i) {
             method_set->offsets[i] = offset;
 
-            cj_attribute_set_t *attribute_set = NULL;
+            cj_attribute_group_t *attribute_set = NULL;
 
             u2 descriptor_index = cj_ru2(ptr + offset + 4);
             cpool->descriptors[cpool->descriptors_len++] = descriptor_index;
@@ -112,7 +114,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
             if (attributes_length > 0) {
 
-                attribute_set = malloc(sizeof(cj_attribute_set_t));
+                attribute_set = malloc(sizeof(cj_attribute_group_t));
                 attribute_set->index = i;
                 attribute_set->count = attributes_length;
                 attribute_set->offsets = malloc(sizeof(u4) * attributes_length);
@@ -134,7 +136,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     attributes_count = cj_ru2(ptr + offset);
     offset += 2;
 
-    class_attribute_set = malloc(sizeof(cj_attribute_set_t));
+    class_attribute_set = malloc(sizeof(cj_attribute_group_t));
     class_attribute_set->index = 0;
     class_attribute_set->count = attributes_count;
     class_attribute_set->cache = NULL;
@@ -370,13 +372,13 @@ void cj_class_free(cj_class_t *ctx) {
     cj_sfree(privc(ctx)->cpool->offsets);
     cj_sfree(privc(ctx)->cpool->types);
 
-    cj_method_set_free(privc(ctx)->method_set);
+    cj_method_group_free(privc(ctx)->method_set);
     cj_field_set_free(privc(ctx)->field_group);
 
-    cj_attribute_set_free(privc(ctx)->attribute_set);
+    cj_attribute_group_free(privc(ctx)->attribute_set);
     if (privc(ctx)->method_attribute_sets != NULL) {
         for (int i = 0; i < ctx->method_count; ++i) {
-            cj_attribute_set_free(privc(ctx)->method_attribute_sets[i]);
+            cj_attribute_group_free(privc(ctx)->method_attribute_sets[i]);
         }
         cj_sfree(privc(ctx)->method_attribute_sets);
     }
@@ -384,7 +386,7 @@ void cj_class_free(cj_class_t *ctx) {
     if (privc(ctx)->field_attribute_sets != NULL) {
 
         for (int i = 0; i < ctx->field_count; ++i) {
-            cj_attribute_set_free(privc(ctx)->field_attribute_sets[i]);
+            cj_attribute_group_free(privc(ctx)->field_attribute_sets[i]);
         }
         cj_sfree(privc(ctx)->field_attribute_sets);
     }
@@ -392,7 +394,7 @@ void cj_class_free(cj_class_t *ctx) {
     cj_cp_free(privc(ctx)->cpool);
 
     if (privc(ctx)->annotation_set != NULL) {
-        cj_annotation_set_free(privc(ctx)->annotation_set);
+        cj_annotation_group_free(privc(ctx)->annotation_set);
     }
     cj_sfree((char *) ctx->name);
     cj_sfree((char *) ctx->package);
@@ -411,3 +413,97 @@ cj_field_t *cj_class_get_field_by_name(cj_class_t *ctx, const_str name) {
     cj_field_t *field = cj_field_group_get_by_name(ctx, set, name);
     return field;
 }
+
+u2 cj_class_get_field_count(cj_class_t *ctx) {
+    return ctx->field_count;
+}
+
+const_str cj_class_get_name(cj_class_t *ctx) {
+    return ctx->name;
+}
+
+const_str cj_class_get_short_name(cj_class_t *ctx) {
+    return ctx->short_name;
+}
+
+const_str cj_class_get_raw_name(cj_class_t *ctx) {
+    return ctx->raw_name;
+}
+
+const_str cj_class_get_raw_package(cj_class_t *ctx) {
+    return ctx->raw_package;
+}
+
+const_str cj_class_get_package(cj_class_t *ctx) {
+    return ctx->package;
+}
+
+
+cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx) {
+    if (ctx->field_count <= 0 ||
+        idx >= ctx->field_count ||
+        privc(ctx) == NULL ||
+        privc(ctx)->field_group == NULL) {
+        return NULL;
+    }
+
+    return cj_field_group_get(ctx, privc(ctx)->field_group, idx);
+}
+
+u2 cj_class_get_method_count(cj_class_t *ctx) {
+    return ctx->method_count;
+}
+
+cj_method_t *cj_class_get_method(cj_class_t *ctx, u2 idx) {
+    if (ctx == NULL ||
+        privc(ctx) == NULL ||
+        idx >= ctx->method_count ||
+        privc(ctx)->method_set == NULL) {
+        return NULL;
+    }
+
+    return cj_method_group_get(ctx, privc(ctx)->method_set, idx);
+
+}
+
+u2 cj_class_get_attribute_count(cj_class_t *ctx) {
+    return ctx->attr_count;
+}
+
+cj_attribute_t *cj_class_get_attribute(cj_class_t *ctx, u2 idx) {
+    if (ctx == NULL ||
+        privc(ctx) == NULL ||
+        privc(ctx)->attribute_set == NULL ||
+        idx >= privc(ctx)->attribute_set->count) {
+        return NULL;
+    }
+
+    return cj_attribute_group_get(ctx, privc(ctx)->attribute_set, idx);
+}
+
+u2 cj_class_get_annotation_count(cj_class_t *ctx) {
+
+    if (ctx == NULL || privc(ctx) == NULL || privc(ctx)->attribute_set == NULL) { return 0; }
+
+    if (privc(ctx)->annotation_set == NULL && !privc(ctx)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(ctx, privc(ctx)->attribute_set, &privc(ctx)->annotation_set);
+        privc(ctx)->annotation_set_initialized = init;
+    }
+
+    if (privc(ctx)->annotation_set == NULL) return 0;
+    return privc(ctx)->annotation_set->count;
+}
+
+cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
+
+    if (ctx == NULL || privc(ctx) == NULL) return NULL;
+    u2 attr_count = cj_class_get_attribute_count(ctx);
+    if (idx >= attr_count) return NULL;
+
+    if (privc(ctx)->annotation_set == NULL && !privc(ctx)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(ctx, privc(ctx)->attribute_set, &privc(ctx)->annotation_set);
+        privc(ctx)->annotation_set_initialized = init;
+    }
+    return cj_annotation_group_get(ctx, privc(ctx)->annotation_set, idx);
+}
+

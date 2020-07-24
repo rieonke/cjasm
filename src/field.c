@@ -5,6 +5,9 @@
 #include <limits.h>
 #include "field.h"
 #include "hashmap.h"
+#include "annotation.h"
+#include "attribute.h"
+#include "cpool.h"
 
 
 cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets) {
@@ -99,4 +102,85 @@ CJ_INTERNAL void cj_field_set_free(cj_field_group_t *set) {
     hashmap_destroy(set->map);
     cj_sfree(set->map);
     cj_sfree(set);
+}
+
+cj_mem_buf_t *cj_field_to_buf(cj_field_t *field) {
+    return NULL;
+}
+
+CJ_INTERNAL void cj_field_free(cj_field_t *field) {
+    if (field == NULL) {
+        return;
+    }
+    if (privf(field) != NULL && privf(field)->annotation_set != NULL) {
+        cj_annotation_group_free(privf(field)->annotation_set);
+    }
+    cj_sfree(privf(field));
+    cj_sfree(field);
+}
+
+const_str cj_field_get_name(cj_field_t *field) {
+    return field->name;
+}
+
+u2 cj_field_get_access_flags(cj_field_t *field) {
+    return field->access_flags;
+}
+
+const_str cj_field_get_descriptor(cj_field_t *field) {
+    return field->descriptor;
+}
+
+u2 cj_field_get_attribute_count(cj_field_t *field) {
+    return field->attribute_count;
+}
+
+cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx) {
+    if (field->klass == NULL ||
+        field->attribute_count <= 0 ||
+        privf(field)->attribute_set == NULL ||
+        idx >= privf(field)->attribute_set->count) {
+        return NULL;
+    }
+    return cj_attribute_group_get(field->klass, privf(field)->attribute_set, idx);
+}
+
+u2 cj_field_get_annotation_count(cj_field_t *field) {
+
+    if (field == NULL ||
+        privf(field) == NULL ||
+        field->klass == NULL ||
+        field->attribute_count <= 0) {
+        return 0;
+    }
+
+    if (privf(field)->annotation_set == NULL && !privf(field)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(field->klass, privf(field)->attribute_set, &privf(field)->annotation_set);
+        privf(field)->annotation_set_initialized = init;
+    }
+
+    if (privf(field)->annotation_set == NULL) return 0;
+    return privf(field)->annotation_set->count;
+}
+
+cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx) {
+    if (field == NULL ||
+        privf(field) == NULL ||
+        field->klass == NULL) {
+        return NULL;
+    }
+
+    if (privf(field)->annotation_set == NULL && !privf(field)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(field->klass, privf(field)->attribute_set, &privf(field)->annotation_set);
+        privf(field)->annotation_set_initialized = init;
+    }
+
+    return cj_annotation_group_get(field->klass, privf(field)->annotation_set, idx);
+}
+
+
+void cj_field_set_name(cj_field_t *field, const_str name) {
+    u2 idx = 0;
+    const_str new_name = cj_cp_put_str(field->klass, name, strlen((char *) name), &idx);
+    field->name = new_name;
 }

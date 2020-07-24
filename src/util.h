@@ -82,9 +82,9 @@ typedef struct cj_cp_entry_s cj_cp_entry_t;
 typedef struct cj_class_priv_s cj_class_priv_t;
 typedef struct cj_method_priv_s cj_method_priv_t;
 typedef struct cj_field_priv_s cj_field_priv_t;
-typedef struct cj_attribute_set_s cj_attribute_set_t;
-typedef struct cj_method_set_s cj_method_set_t;
-typedef struct cj_annotation_set_s cj_annotation_set_t;
+typedef struct cj_attribute_group_s cj_attribute_group_t;
+typedef struct cj_method_group_s cj_method_group_t;
+typedef struct cj_annotation_group_s cj_annotation_group_t;
 typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 typedef struct cj_code_iter_s cj_code_iter_t;
@@ -112,10 +112,9 @@ struct name {                        \
     type **cache;                    \
 };
 
-CJ_CACHEABLE_SET(cj_annotation_set_s, cj_annotation_t)
-CJ_CACHEABLE_SET(cj_attribute_set_s, cj_attribute_t)
-CJ_CACHEABLE_SET(cj_method_set_s, cj_method_t)
-//CJ_CACHEABLE_SET(cj_field_set_s, cj_field_t)
+CJ_CACHEABLE_SET(cj_annotation_group_s, cj_annotation_t)
+CJ_CACHEABLE_SET(cj_attribute_group_s, cj_attribute_t)
+CJ_CACHEABLE_SET(cj_method_group_s, cj_method_t)
 
 
 struct cj_field_group_s {
@@ -124,6 +123,7 @@ struct cj_field_group_s {
     cj_field_t **fetched;
     struct hashmap_s *map;
 };
+
 struct cj_cpool_s {
     //常量类型数组
     u1 *types;
@@ -161,14 +161,14 @@ struct cj_class_priv_s {
     u2 super_class;
 
     cj_field_group_t *field_group;
-    cj_attribute_set_t **field_attribute_sets;
+    cj_attribute_group_t **field_attribute_sets;
 
-    cj_method_set_t *method_set;
-    cj_attribute_set_t **method_attribute_sets;
+    cj_method_group_t *method_set;
+    cj_attribute_group_t **method_attribute_sets;
 
-    cj_attribute_set_t *attribute_set;
+    cj_attribute_group_t *attribute_set;
     bool annotation_set_initialized;
-    cj_annotation_set_t *annotation_set;
+    cj_annotation_group_t *annotation_set;
 
     bool initialized;
 };
@@ -176,8 +176,8 @@ struct cj_class_priv_s {
 struct cj_method_priv_s {
     u4 offset;
     bool annotation_set_initialized;
-    cj_annotation_set_t *annotation_set;
-    cj_attribute_set_t *attribute_set;
+    cj_annotation_group_t *annotation_set;
+    cj_attribute_group_t *attribute_set;
     cj_code_t *code;
     cj_descriptor_t *descriptor;
 };
@@ -185,8 +185,8 @@ struct cj_method_priv_s {
 struct cj_field_priv_s {
     u4 offset;
     bool annotation_set_initialized;
-    cj_annotation_set_t *annotation_set;
-    cj_attribute_set_t *attribute_set;
+    cj_annotation_group_t *annotation_set;
+    cj_attribute_group_t *attribute_set;
 };
 
 struct cj_attribute_priv_s {
@@ -276,50 +276,6 @@ enum cj_cp_type {
     }                  \
     ++v
 
-CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_ptr, u4 *out_offset);
 
-CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf_ptr ev_ptr, u4 *out_offset);
-
-CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len, u2 *index);
-
-CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets, u4 len);
-
-CJ_INTERNAL cj_attribute_t *cj_attribute_set_get(cj_class_t *ctx, cj_attribute_set_t *set, u2 idx);
-
-CJ_INTERNAL void cj_attribute_set_free(cj_attribute_set_t *set);
-
-CJ_INTERNAL cj_method_t *cj_method_set_get(cj_class_t *ctx, cj_method_set_t *set, u2 idx);
-
-CJ_INTERNAL void cj_method_set_free(cj_method_set_t *set);
-
-CJ_INTERNAL void cj_field_free(cj_field_t *field);
-
-CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr);
-
-CJ_INTERNAL void cj_method_free(cj_method_t *method);
-
-CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann);
-
-CJ_INTERNAL bool cj_annotation_set_init(cj_class_t *ctx, cj_attribute_set_t *attr_set, cj_annotation_set_t **set);
-
-CJ_INTERNAL cj_annotation_t *cj_annotation_set_get(cj_class_t *ctx, cj_annotation_set_t *set, u2 idx);
-
-CJ_INTERNAL void cj_annotation_set_free(cj_annotation_set_t *set);
-
-CJ_INTERNAL void cj_code_iterate(cj_code_t *code, void(*callback)(cj_insn_t *, void *ctx), void *ctx);
-
-CJ_INTERNAL cj_code_iter_t cj_code_iter_start(cj_code_t *code);
-
-CJ_INTERNAL bool cj_code_iter_has_next(cj_code_iter_t *iter);
-
-CJ_INTERNAL cj_insn_t *cj_code_iter_next(cj_code_iter_t *iter);
-
-CJ_INTERNAL void cj_insn_free(cj_insn_t *insn);
-
-CJ_INTERNAL u2 cj_code_compute_max_stack(cj_code_t *code);
-
-CJ_INTERNAL void cj_print_opcode(enum cj_opcode code);
-
-CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str name);
 
 #endif //CJASM_UTIL_H

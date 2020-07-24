@@ -18,4 +18,7 @@ CJ_INTERNAL bool cj_cp_update_str(cj_class_t *ctx, const_str name, size_t len, u
 
 CJ_INTERNAL bool cj_cp_update_class(cj_class_t *ctx, u2 idx, u2 name_idx);
 
+CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len, u2 *index);
+
+
 #endif //CJASM_CPOOL_H

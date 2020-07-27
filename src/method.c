@@ -2,8 +2,10 @@
 // Created by Rieon Ke on 2020/7/19.
 //
 #include <assert.h>
-#include "cjasm.h"
+#include "def.h"
+#include "class.h"
 #include "descriptor.h"
+#include "cpool.h"
 #include "util.h"
 #include "annotation.h"
 #include "method.h"

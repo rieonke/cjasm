@@ -3,7 +3,7 @@
 //
 #include <string.h>
 #include <stdio.h>
-#include <cjasm.h>
+#include "def.h"
 #include "../src/util.h"
 
 #define END printf("}\n");

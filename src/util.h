@@ -5,7 +5,7 @@
 #ifndef CJASM_UTIL_H
 #define CJASM_UTIL_H
 
-#include <cjasm.h>
+#include "def.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -257,5 +257,13 @@ enum cj_cp_type {
     }                  \
     ++v
 
+
+/**
+ * read file content into char buffer.
+ * @param path file path
+ * @param buf out buffer
+ * @return buffer size, error occurred if less than 0
+ */
+long cj_load_file(char *path, unsigned char **buf);
 
 #endif //CJASM_UTIL_H

@@ -5,6 +5,7 @@
 #include <math.h>
 #include "cpool.h"
 #include "hashmap.h"
+#include "class.h"
 #include "mem_buf.h"
 
 

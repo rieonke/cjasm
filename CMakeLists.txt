@@ -7,9 +7,18 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCJ_DEBUG")
 
 include(third_party/ThirdParty.cmake)
 
-include_directories(include)
+add_library(cjasm-object OBJECT
+        src/util.c
+        src/method.c
+        src/class.c
+        src/cpool.c
+        src/descriptor.c
+        src/mem_buf.c
+        src/annotation.c
+        src/field.c
+        src/attribute.c
+        )
 
-add_library(cjasm-object OBJECT include/cjasm.h src/util.h src/util.c src/method.c src/class.c src/cpool.c src/cpool.h src/descriptor.c src/descriptor.h src/mem_buf.c src/mem_buf.h src/class.h src/annotation.c src/annotation.h src/field.c src/field.h src/method.h src/attribute.c src/attribute.h)
 add_library(cjasm-shared SHARED $<TARGET_OBJECTS:cjasm-object>)
 add_library(cjasm-static STATIC $<TARGET_OBJECTS:cjasm-object>)
 

@@ -5,7 +5,7 @@
 #ifndef CJASM_MEM_BUF_H
 #define CJASM_MEM_BUF_H
 
-#include <cjasm.h>
+#include "def.h"
 
 #ifndef CJ_BUFFER_SIZE
 #define CJ_BUFFER_SIZE 1024

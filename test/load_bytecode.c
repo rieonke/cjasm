@@ -5,15 +5,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "cjasm.h"
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include "../src/util.h"
 #include "../src/descriptor.h"
 #include "../src/class.h"
-#include <setjmp.h>
-#include <cmocka.h>
 #include "../src/method.h"
 #include "../src/cpool.h"
-
+#include "../src/field.h"
 
 #define TEST_CLASS "io/ticup/example/Test.class"
 #define MAJOR_VERSION 52

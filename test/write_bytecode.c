@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "cjasm.h"
 #include "../src/cpool.h"
 #include "../src/class.h"
 #include "../src/field.h"

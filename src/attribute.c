@@ -2,7 +2,9 @@
 // Created by Rieon Ke on 2020/7/24.
 //
 
+#include "class.h"
 #include "attribute.h"
+#include "cpool.h"
 
 CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets, u4 len) {
     if (len == 0) {

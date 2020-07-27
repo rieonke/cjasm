@@ -3,6 +3,8 @@
 //
 
 #include "util.h"
+#include "cpool.h"
+#include "class.h"
 #include "annotation.h"
 #include "attribute.h"
 

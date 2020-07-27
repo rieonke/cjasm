@@ -7,6 +7,86 @@
 
 #include "util.h"
 
+
+/**
+ * 获取方法名.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 方法名
+ */
+const_str cj_method_get_name(cj_method_t *method);
+
+/**
+ * 获取方法的access_flags.
+ * @param method 方法
+ * @return access flags
+ */
+u2 cj_method_get_access_flags(cj_method_t *method);
+
+/**
+ * 获取方法的属性数量.
+ * @param method 方法
+ * @return 属性数量
+ */
+u2 cj_method_get_attribute_count(cj_method_t *method);
+
+/**
+ * 根据索引值获取方法的属性.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @param idx 索引
+ * @return 属性，如果不存在该索引值时，返回NULL.
+ */
+cj_attribute_t *cj_method_get_attribute(cj_method_t *method, u2 idx);
+
+/**
+ * 获取方法的注解数量.
+ * @param method 方法
+ * @return 注解数量
+ */
+u2 cj_method_get_annotation_count(cj_method_t *method);
+
+/**
+ * 根据索引值获取方法的注解.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @param idx 索引
+ * @return 属性，如果不存在该索引值时，返回NULL.
+ */
+cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx);
+
+/**
+ * 获取方法的代码.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 代码，如果不存在代码时，返回NULL
+ */
+cj_code_t *cj_method_get_code(cj_method_t *method);
+
+/**
+ * 获取方法参数数量.
+ * @param method 方法
+ * @return 方法数量
+ */
+u2 cj_method_get_parameter_count(cj_method_t *method);
+
+/**
+ * 获取方法返回值类型.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 返回值类型
+ */
+const_str cj_method_get_return_type(cj_method_t *method);
+
+/**
+ * 获取方法描述符.
+ * 返回值不可被释放.
+ * @param method 方法
+ * @return 方法描述符
+ */
+cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method);
+
+
 CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t *set, u2 idx);
 
 CJ_INTERNAL void cj_method_group_free(cj_method_group_t *set);

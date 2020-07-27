@@ -5,7 +5,7 @@
 #ifndef CJASM_ANNOTATION_H
 #define CJASM_ANNOTATION_H
 
-#include <cjasm.h>
+#include "def.h"
 #include "util.h"
 
 cj_annotation_t *cj_annotation_new();

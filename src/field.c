@@ -8,6 +8,7 @@
 #include "annotation.h"
 #include "attribute.h"
 #include "cpool.h"
+#include "class.h"
 
 #define CJ_FIELD_D_NEW 0x2
 
@@ -190,6 +191,13 @@ CJ_INTERNAL void cj_field_free(cj_field_t *field) {
     if (privf(field) != NULL && privf(field)->annotation_group != NULL) {
         cj_annotation_group_free(privf(field)->annotation_group);
     }
+
+    if (privf(field)->dirty & CJ_FIELD_D_NEW) {
+        cj_sfree((char *) field->name);
+        cj_sfree((char *) field->descriptor);
+    }
+
+
     cj_sfree(privf(field));
     cj_sfree(field);
 }
@@ -219,7 +227,7 @@ const_str cj_field_get_name(cj_field_t *field) {
     return field->name;
 }
 
-u2 cj_field_get_access_flags(cj_field_t *field) {
+cj_modifiers_t cj_field_get_modifiers(cj_field_t *field) {
     return field->access_flags;
 }
 

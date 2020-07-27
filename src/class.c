@@ -4,7 +4,7 @@
 
 #include "class.h"
 
-#include <cjasm.h>
+#include "def.h"
 #include <assert.h>
 #include "util.h"
 #include "cpool.h"
@@ -225,8 +225,8 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
     return buf;
 }
 
-const_str
-cj_descriptor_replace_type(const_str descriptor, const_str old_element, const_str new_element, bool *touched) {
+const_str cj_descriptor_replace_type(const_str descriptor, const_str old_element,
+                                     const_str new_element, bool *touched) {
     cj_descriptor_t *desc = cj_descriptor_parse(descriptor, strlen((char *) descriptor));
 
     *touched = false;
@@ -458,6 +458,24 @@ bool cj_class_add_field(cj_class_t *ctx, cj_field_t *field) {
     cj_field_group_add(ctx, privc(ctx)->field_group, field);
 
     return true;
+}
+
+cj_modifiers_t cj_class_get_modifiers(cj_class_t *cls) {
+    return cls->access_flags;
+}
+
+cj_annotation_group_t *cj_class_get_annotation_group(cj_class_t *cls) {
+
+    if (cls == NULL || privc(cls) == NULL || privc(cls)->attribute_group == NULL) { return 0; }
+
+    if (privc(cls)->annotation_group == NULL && !privc(cls)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(cls, privc(cls)->attribute_group, &privc(cls)->annotation_group);
+        privc(cls)->annotation_set_initialized = init;
+    }
+
+    if (privc(cls)->annotation_group == NULL) return 0;
+
+    return privc(cls)->annotation_group;
 }
 
 u2 cj_class_get_field_count(cj_class_t *ctx) {

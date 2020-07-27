@@ -5,10 +5,75 @@
 #ifndef CJASM_FIELD_H
 #define CJASM_FIELD_H
 
-#include <cjasm.h>
+#include "def.h"
 #include "mem_buf.h"
 #include "util.h"
 #include "hashmap.h"
+
+
+/**
+ * 获取字段名.
+ * 返回值不可被释放.
+ * @param field cj 字段
+ * @return 字段名，不可被释放.
+ */
+const_str cj_field_get_name(cj_field_t *field);
+
+/**
+ * 设置字段名.
+ * @param field  字段.
+ * @param name 名称.
+ */
+void cj_field_set_name(cj_field_t *field, const_str name);
+
+/**
+ * 获取字段Access Flags.
+ * @param field cj 字段
+ * @return access flags
+ */
+cj_modifiers_t cj_field_get_modifiers(cj_field_t *field);
+
+/**
+ * 获取字段描述符.
+ * 返回值不可被释放.
+ * @param field 字段
+ * @return 字段描述符，不可被释放.
+ */
+const_str cj_field_get_descriptor(cj_field_t *field);
+
+/**
+ * 获取字段的属性数量.
+ * @param field 字段
+ * @return 字段数量
+ */
+u2 cj_field_get_attribute_count(cj_field_t *field);
+
+/**
+ * 根据索引值获取字段的属性.
+ * 返回值不可被释放.
+ * @param field 字段
+ * @param idx 索引值
+ * @return 属性，当不存在该索引值时，返回NULL
+ */
+cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx);
+
+/**
+ * 获取字段的注解数量.
+ * @param field 字段
+ * @return 注解数量
+ */
+u2 cj_field_get_annotation_count(cj_field_t *field);
+
+/**
+ * 根据索引值获取字段的注解.
+ * 返回值不可被释放.
+ * @param field 字段
+ * @param idx 索引
+ * @return 注解，当不存在该索引时，返回NULL
+ */
+cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx);
+
+
 
 cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets, u4 *tails);
 

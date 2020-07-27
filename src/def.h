@@ -1,9 +1,9 @@
 //
-// Created by Rieon Ke on 2020/7/9.
+// Created by Rieon Ke on 2020/7/27.
 //
 
-#ifndef CJASM_CJASM_H
-#define CJASM_CJASM_H
+#ifndef CJASM_DEF_H
+#define CJASM_DEF_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -18,6 +18,7 @@ typedef uint16_t u2;
 typedef uint32_t u4;
 typedef uint64_t u8;
 
+typedef u2 cj_modifiers_t;
 typedef void *cj_pointer;
 typedef const unsigned char *const_str;
 typedef const_str const buf_ptr;
@@ -118,20 +119,20 @@ enum cj_attr_type {
  *  | ACC_SYNTHETIC    | 0x1000 |
  *  +------------------+--------+
  */
- enum cj_access_flags {
-      ACC_PUBLIC       = 0x0001 ,
-      ACC_PRIVATE      = 0x0002 ,
-      ACC_PROTECTED    = 0x0004 ,
-      ACC_STATIC       = 0x0008 ,
-      ACC_FINAL        = 0x0010 ,
-      ACC_SYNCHRONIZED = 0x0020 ,
-      ACC_BRIDGE       = 0x0040 ,
-      ACC_VARARGS      = 0x0080 ,
-      ACC_NATIVE       = 0x0100 ,
-      ACC_ABSTRACT     = 0x0400 ,
-      ACC_STRICT       = 0x0800 ,
-      ACC_SYNTHETIC    = 0x1000 ,
- };
+enum cj_access_flags {
+    ACC_PUBLIC       = 0x0001 ,
+    ACC_PRIVATE      = 0x0002 ,
+    ACC_PROTECTED    = 0x0004 ,
+    ACC_STATIC       = 0x0008 ,
+    ACC_FINAL        = 0x0010 ,
+    ACC_SYNCHRONIZED = 0x0020 ,
+    ACC_BRIDGE       = 0x0040 ,
+    ACC_VARARGS      = 0x0080 ,
+    ACC_NATIVE       = 0x0100 ,
+    ACC_ABSTRACT     = 0x0400 ,
+    ACC_STRICT       = 0x0800 ,
+    ACC_SYNTHETIC    = 0x1000 ,
+};
 
 
 enum cj_opcode {
@@ -367,22 +368,6 @@ enum cj_opcode {
 
 //@formatter:on
 
-struct cj_class_s {
-    u2 major_version;
-    u2 minor_version;
-    u2 access_flags;
-    u2 interface_count;
-    u2 attr_count;
-    u2 field_count;
-    u2 method_count;
-    cj_pointer priv;
-    const_str name;
-    const_str short_name;
-    const_str raw_name;
-    const_str package;
-    const_str raw_package;
-};
-
 struct cj_field_s {
     u2 access_flags;
     cj_class_t *klass;
@@ -467,369 +452,4 @@ struct cj_code_s {
     cj_method_t *method;
 };
 
-/**
- * read file content into char buffer.
- * @param path file path
- * @param buf out buffer
- * @return buffer size, error occurred if less than 0
- */
-long cj_load_file(char *path, unsigned char **buf);
-
-/**
- * create a cj class context.
- * @param buf bytecode buffer.
- * @param len bytecode length
- * @return context
- */
-cj_class_t *cj_class_new(unsigned char *buf, size_t len);
-
-/**
- * free a cj class context
- * @param ctx class context
- */
-void cj_class_free(cj_class_t *ctx);
-
-/**
- * 跟据索引号从常量池中获取指定的字符串常量.
- * 返回值不可被释放.
- * @param ctx cj 类
- * @param idx 常量池索引，[1 - 常量池长度)
- * @return 字符串，当不存在该索引值或者该常量不是字符串类型时，返回NULL。
- */
-const_str cj_cp_get_str(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的4字节常量.
- * @param ctx 类
- * @param idx 常量池索引，[1 - 常量池长度)
- * @return 4字节常量
- */
-u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的int常量
- * @param ctx
- * @param idx
- * @return
- */
-int cj_cp_get_int(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的char常量
- * @param ctx
- * @param idx
- * @return
- */
-u2 cj_cp_get_char(cj_class_t *ctx, u2 idx);
-/**
- * 根据索引号从常量池中获取指定的byte常量
- * @param ctx
- * @param idx
- * @return
- */
-char cj_cp_get_byte(cj_class_t *ctx, u2 idx);
-/**
- * 根据索引号从常量池中获取指定的boolean常量
- * @param ctx
- * @param idx
- * @return
- */
-bool cj_cp_get_bool(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的8字节常量
- * @param ctx 类
- * @param idx 常量池索引，[1 - 常量池长度)
- * @return 8字节常量
- */
-u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的long常量
- * @param ctx
- * @param idx
- * @return
- */
-long cj_cp_get_long(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的float常量
- * @param ctx
- * @param idx
- * @return
- */
-float cj_cp_get_float(cj_class_t *ctx, u2 idx);
-
-/**
- * 根据索引号从常量池中获取指定的double常量
- * @param ctx
- * @param idx
- * @return
- */
-double cj_cp_get_double(cj_class_t *ctx, u2 idx);
-/**
- * 获取类名.类名格式如 com.example.Test
- * 返回值不可被释放.
- * @param ctx 类
- * @return 类名
- */
-const_str cj_class_get_name(cj_class_t *ctx);
-
-
-void cj_class_set_name(cj_class_t *ctx, unsigned char *name);
-
-/**
- * 获取短名.
- * 如 com.example.Test 短名为 Test.
- * 当没有包名时，短名与类名相同.
- * 返回值不可被释放.
- * @param ctx
- * @return 短名，返回值不可被释放
- */
-const_str cj_class_get_short_name(cj_class_t *ctx);
-
-
-/**
- * 获取原生的类名，如com/example/Test.
- * 返回值不可被释放.
- * @param ctx
- * @return 原生类名
- */
-const_str cj_class_get_raw_name(cj_class_t *ctx);
-
-/**
- * 获取包名，如com.example
- * 返回值不可被释放.
- * @param ctx 类
- * @return 包名字符串
- */
-const_str cj_class_get_package(cj_class_t *ctx);
-
-/**
- * 获取原生包名，如com/example
- * 返回值不可被释放.
- * @param ctx 类
- * @return 原生包名字符串
- */
-const_str cj_class_get_raw_package(cj_class_t *ctx);
-
-/**
- * 根据索引获取类的字段.
- * 返回值不可被释放.
- * @param ctx cj 类
- * @param idx 字段索引
- * @return 字段，如果不存在该索引值，则返回NULL
- */
-cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx);
-
-/**
- * 获取类的字段数量.
- * @param ctx 类
- * @return 字段数量，大于或等于0
- */
-u2 cj_class_get_field_count(cj_class_t *ctx);
-
-/**
- * 获取类的方法数量
- * @param ctx  类
- * @return 方法数量，大于或等于0
- */
-u2 cj_class_get_method_count(cj_class_t *ctx);
-
-/**
- * 根据索引获取类的字段.
- * 返回值不可被释放.
- * @param ctx 类
- * @param idx 方法索引
- * @return 方法，如果不存在该索引值，则返回NULL
- */
-cj_method_t *cj_class_get_method(cj_class_t *ctx, u2 idx);
-
-/**
- * 获取类的属性数量.
- * @param ctx 类
- * @return 属性数量，大于或等于0
- */
-u2 cj_class_get_attribute_count(cj_class_t *ctx);
-
-/**
- * 根据索引获取类的属性.
- * 返回值不可被释放.
- * @param ctx 类
- * @param idx 属性索引
- * @return 字段，如果不存在该索引值，则返回NULL
- */
-cj_attribute_t *cj_class_get_attribute(cj_class_t *ctx, u2 idx);
-
-
-/**
- * 获取类的注解数量.
- * @param ctx 类
- * @return 注解数量
- */
-u2 cj_class_get_annotation_count(cj_class_t *ctx);
-
-/**
- * 根据索引获取指定的注解.
- * 返回值不可释放.
- * @param ctx 类
- * @param idx 注解索引
- * @return 注解，如果不存在该索引值，则返回NULL
- */
-cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx);
-
-/**
- * 获取字段名.
- * 返回值不可被释放.
- * @param field cj 字段
- * @return 字段名，不可被释放.
- */
-const_str cj_field_get_name(cj_field_t *field);
-
-/**
- * 设置字段名.
- * @param field  字段.
- * @param name 名称.
- */
-void cj_field_set_name(cj_field_t *field, const_str name);
-
-/**
- * 获取字段Access Flags.
- * @param field cj 字段
- * @return access flags
- */
-u2 cj_field_get_access_flags(cj_field_t *field);
-
-/**
- * 获取字段描述符.
- * 返回值不可被释放.
- * @param field 字段
- * @return 字段描述符，不可被释放.
- */
-const_str cj_field_get_descriptor(cj_field_t *field);
-
-
-/**
- * 获取字段的属性数量.
- * @param field 字段
- * @return 字段数量
- */
-u2 cj_field_get_attribute_count(cj_field_t *field);
-
-/**
- * 根据索引值获取字段的属性.
- * 返回值不可被释放.
- * @param field 字段
- * @param idx 索引值
- * @return 属性，当不存在该索引值时，返回NULL
- */
-cj_attribute_t *cj_field_get_attribute(cj_field_t *field, u2 idx);
-
-/**
- * 获取字段的注解数量.
- * @param field 字段
- * @return 注解数量
- */
-u2 cj_field_get_annotation_count(cj_field_t *field);
-
-/**
- * 根据索引值获取字段的注解.
- * 返回值不可被释放.
- * @param field 字段
- * @param idx 索引
- * @return 注解，当不存在该索引时，返回NULL
- */
-cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx);
-
-/**
- * 获取方法名.
- * 返回值不可被释放.
- * @param method 方法
- * @return 方法名
- */
-const_str cj_method_get_name(cj_method_t *method);
-
-/**
- * 获取方法的access_flags.
- * @param method 方法
- * @return access flags
- */
-u2 cj_method_get_access_flags(cj_method_t *method);
-
-/**
- * 获取方法的属性数量.
- * @param method 方法
- * @return 属性数量
- */
-u2 cj_method_get_attribute_count(cj_method_t *method);
-
-/**
- * 根据索引值获取方法的属性.
- * 返回值不可被释放.
- * @param method 方法
- * @param idx 索引
- * @return 属性，如果不存在该索引值时，返回NULL.
- */
-cj_attribute_t *cj_method_get_attribute(cj_method_t *method, u2 idx);
-
-
-/**
- * 获取方法的注解数量.
- * @param method 方法
- * @return 注解数量
- */
-u2 cj_method_get_annotation_count(cj_method_t *method);
-
-/**
- * 根据索引值获取方法的注解.
- * 返回值不可被释放.
- * @param method 方法
- * @param idx 索引
- * @return 属性，如果不存在该索引值时，返回NULL.
- */
-cj_annotation_t *cj_method_get_annotation(cj_method_t *method, u2 idx);
-
-
-/**
- * 获取方法的代码.
- * 返回值不可被释放.
- * @param method 方法
- * @return 代码，如果不存在代码时，返回NULL
- */
-cj_code_t *cj_method_get_code(cj_method_t *method);
-
-
-/**
- * 获取方法参数数量.
- * @param method 方法
- * @return 方法数量
- */
-u2 cj_method_get_parameter_count(cj_method_t *method);
-
-
-/**
- * 获取方法返回值类型.
- * 返回值不可被释放.
- * @param method 方法
- * @return 返回值类型
- */
-const_str cj_method_get_return_type(cj_method_t *method);
-
-
-/**
- * 获取方法描述符.
- * 返回值不可被释放.
- * @param method 方法
- * @return 方法描述符
- */
-cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method);
-
-
-/**
- * 根据属性名解析属性类型.
- * @param type_str 属性名
- * @return 属性类型
- */
-enum cj_attr_type cj_attr_parse_type(const_str type_str);
-
-#endif //CJASM_CJASM_H
+#endif //CJASM_DEF_H

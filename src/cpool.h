@@ -8,6 +8,89 @@
 #include "util.h"
 #include "mem_buf.h"
 
+/**
+ * 跟据索引号从常量池中获取指定的字符串常量.
+ * 返回值不可被释放.
+ * @param ctx cj 类
+ * @param idx 常量池索引，[1 - 常量池长度)
+ * @return 字符串，当不存在该索引值或者该常量不是字符串类型时，返回NULL。
+ */
+const_str cj_cp_get_str(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的4字节常量.
+ * @param ctx 类
+ * @param idx 常量池索引，[1 - 常量池长度)
+ * @return 4字节常量
+ */
+u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的int常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+int cj_cp_get_int(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的char常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+u2 cj_cp_get_char(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的byte常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+
+char cj_cp_get_byte(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的boolean常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+bool cj_cp_get_bool(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的8字节常量
+ * @param ctx 类
+ * @param idx 常量池索引，[1 - 常量池长度)
+ * @return 8字节常量
+ */
+u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的long常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+long cj_cp_get_long(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的float常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+float cj_cp_get_float(cj_class_t *ctx, u2 idx);
+
+/**
+ * 根据索引号从常量池中获取指定的double常量
+ * @param ctx
+ * @param idx
+ * @return
+ */
+double cj_cp_get_double(cj_class_t *ctx, u2 idx);
+
+
 cj_cpool_t *cj_cp_parse(buf_ptr buf);
 
 u4 cj_cp_get_tail_offset(cj_cpool_t *ctx);

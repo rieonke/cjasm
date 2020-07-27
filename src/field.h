@@ -12,6 +12,10 @@
 
 cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets, u4 *tails);
 
+bool cj_field_group_add(cj_class_t *ctx, cj_field_group_t *group, cj_field_t *field);
+
+cj_field_t *cj_field_new(cj_class_t *ctx, u2 access_flags, const_str name, const_str descriptor);
+
 cj_field_t *cj_field_group_get_by_name(cj_class_t *ctx, cj_field_group_t *set, const_str name);
 
 cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *set, u2 idx);

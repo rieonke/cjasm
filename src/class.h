@@ -26,5 +26,7 @@ CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str name);
 
 bool cj_class_remove_field(cj_class_t *ctx, u2 idx);
 
+bool cj_class_add_field(cj_class_t *ctx, cj_field_t *field);
+
 
 #endif //CJASM_CLASS_H

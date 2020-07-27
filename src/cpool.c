@@ -4,7 +4,32 @@
 
 #include <math.h>
 #include "cpool.h"
+#include "hashmap.h"
 #include "mem_buf.h"
+
+
+struct cj_cpool_s {
+    //常量类型数组
+    u1 *types;
+    //常量池偏移量数组
+    u4 *offsets;
+    //常量池大小
+    u2 length;
+    unsigned char **cache;
+    u4 tail_offset;
+
+    cj_cp_entry_t **entries;
+    u2 entries_len;
+    u2 *touched;
+
+    u2 *descriptors;
+    u2 descriptors_len;
+
+    u2 *classes;
+    u2 classes_len;
+
+    struct hashmap_s *map;
+};
 
 cj_mem_buf_t *cj_cp_to_buf2(cj_class_t *ctx) {
 
@@ -89,7 +114,7 @@ cj_mem_buf_t *cj_cp_to_buf2(cj_class_t *ctx) {
 
     //generate new buf
     for (int i = 0; i < cpool->entries_len; ++i) {
-        if (copied_indexes[i] == 1) continue;
+//        if (copied_indexes[i] == 1) continue;
         //fixme 检查buffer是否已满
         cj_cp_entry_t *entry = cpool->entries[i];
 
@@ -126,6 +151,13 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
     u2 *classes = malloc(cp_len * sizeof(u2));
     u2 classes_len = 0;
 
+    unsigned char **fetched = calloc(cp_len, sizeof(unsigned char *));
+    struct hashmap_s *map = malloc(sizeof(struct hashmap_s));
+
+    u2 map_len = cp_len;
+    cj_n2pow(map_len);
+
+    hashmap_create(map_len, map);
 
     int cur_cp_idx = 1;
     u4 cur_cp_offset = 10;
@@ -136,7 +168,6 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
 
         *(cp_types + cur_cp_idx) = type;
         *(cp_offsets + cur_cp_idx) = cur_cp_offset;
-        cur_cp_idx++;
         //判断常量池中每个常量的类型
         switch (type) {
             /*+-----------------------------+-----+--------+
@@ -217,7 +248,15 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
                 //2
                 break;
             case CONSTANT_Utf8: {
-                cp_size = 2 + cj_ru2(buf + cur_cp_offset);
+                u2 len = cj_ru2(buf + cur_cp_offset);
+                cp_size = 2 + len;
+
+                unsigned char *str = malloc(sizeof(char) * (len + 1));
+                str[len] = 0;
+                memcpy(str, buf + cur_cp_offset + 2, len);
+                fetched[cur_cp_idx] = str;
+
+                hashmap_put(map, (char *) str, len, (void *) (0L + cur_cp_idx));
                 break;
             }
             default:
@@ -227,13 +266,14 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
         }
         //设置当前常量的截止位置
         cur_cp_offset += cp_size;
+        cur_cp_idx++;
     }
 
 
     cj_cpool_t *cpool = malloc(sizeof(cj_cpool_t));
     cpool->length = cp_len;
     cpool->types = cp_types;
-    cpool->cache = calloc(cp_len, sizeof(unsigned char *));
+    cpool->cache = fetched;
     cpool->touched = calloc(cp_len, sizeof(u2));
     cpool->offsets = cp_offsets;
     cpool->entries = NULL;
@@ -243,10 +283,14 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
     cpool->descriptors_len = descriptors_len;
     cpool->classes = classes;
     cpool->classes_len = classes_len;
+    cpool->map = map;
     return cpool;
 }
 
 void cj_cp_free(cj_cpool_t *cpool) {
+
+    cj_sfree(cpool->offsets);
+    cj_sfree(cpool->types);
 
     if (cpool->entries != NULL) {
         for (int i = 0; i < cpool->entries_len; ++i) {
@@ -271,6 +315,11 @@ void cj_cp_free(cj_cpool_t *cpool) {
 
     cj_sfree(cpool->cache);
     cj_sfree(cpool->touched);
+
+    if (cpool->map != NULL) {
+        hashmap_destroy(cpool->map);
+        cj_sfree(cpool->map);
+    }
 
     free(cpool);
 }
@@ -390,6 +439,57 @@ double cj_cp_get_double(cj_class_t *ctx, u2 idx) {
 }
 
 CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
+
+    //检查当前常量池中是否有该字符串，如果没有，则新建一个
+    cj_cpool_t *cpool = privc(ctx)->cpool;
+    if (cpool == NULL || cpool->map == NULL) {
+        return NULL;
+    }
+
+    u2 idx = ((long) hashmap_get(cpool->map, (char *) name, len) & 0xFFFF);
+    if (idx == 0) { //不存在
+        u2 cur_idx = cpool->entries_len++;
+        if (cpool->entries == NULL) {
+            cpool->entries = malloc(sizeof(cj_cp_entry_t *));
+        } else {
+            cpool->entries = realloc(cpool->entries, sizeof(cj_cp_entry_t *) * cpool->entries_len);
+        }
+
+        cj_cp_entry_t *entry = malloc(sizeof(cj_cp_entry_t));
+        entry->tag = CONSTANT_Utf8;
+        entry->len = len;
+        entry->data = (unsigned char *) strndup((char *) name, len);
+
+        hashmap_put(cpool->map, (char *) entry->data, entry->len, (void *) (0L + cur_idx + cpool->length));
+
+        if (index != NULL) {
+            *index = cur_idx + cpool->length;
+        }
+
+        cpool->entries[cur_idx] = entry;
+        return entry->data;
+
+    }
+
+    if (index != NULL) {
+        *index = idx;
+    }
+
+    if (idx < cpool->length) { //当前常量池中已经有该字符串了
+        return cpool->cache[idx];
+    } else if ((idx - cpool->length) < cpool->entries_len) {
+        idx = idx - cpool->length;
+        cj_cp_entry_t *entry = cpool->entries[idx];
+        return entry->data;
+    }
+
+    if (index != NULL) {
+        *index = 0;
+    }
+    return NULL;
+}
+
+CJ_INTERNAL const_str cj_cp_put_str2(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
     // 检查现有的常量池中是否有当前字符串
     // 如果有，则直接返回现有的字符串
     // 如果不存在，则将该字符串放置于新的常量池中
@@ -456,5 +556,49 @@ CJ_INTERNAL bool cj_cp_update_class(cj_class_t *ctx, u2 idx, u2 name_idx) {
     u4 offset = cpool->offsets[idx];
     cj_wu2(privc(ctx)->buf + offset, name_idx);
     return true;
+}
+
+u4 cj_cp_get_tail_offset(cj_cpool_t *ctx) {
+    return ctx->tail_offset;
+}
+
+void cj_cp_add_descriptor_idx(cj_cpool_t *cpool, u2 desc_idx) {
+    cpool->descriptors[cpool->descriptors_len++] = desc_idx;
+}
+
+u2 cj_cp_get_descriptor_idx(cj_cpool_t *cpool, u2 idx) {
+    return cpool->descriptors[idx];
+}
+
+u2 cj_cp_get_descriptor_count(cj_cpool_t *cpool) {
+    return cpool->descriptors_len;
+}
+
+u2 cj_cp_get_class_idx(cj_cpool_t *cpool, u2 idx) {
+    return cpool->classes[idx];
+}
+
+u2 cj_cp_get_class_count(cj_cpool_t *cpool) {
+    return cpool->classes_len;
+}
+
+CJ_INTERNAL u2 cj_cp_get_u2(cj_class_t *ctx, u2 idx) {
+    u4 offset = privc(ctx)->cpool->offsets[idx];
+    return cj_ru2(privc(ctx)->buf + offset);
+}
+
+u2 cj_cp_get_length(cj_cpool_t *cpool) {
+    return cpool->length;
+}
+
+u2 cj_cp_get_str_index(cj_class_t *ctx, const_str str) {
+    cj_cpool_t *cpool = privc(ctx)->cpool;
+
+    long idx = (long) hashmap_get(cpool->map, (char *) str, strlen((char *) str));
+    if (idx == 0) {
+        return 0;
+    }
+
+    return idx & 0xFFFF;
 }
 

@@ -125,28 +125,6 @@ struct cj_field_group_s {
     struct hashmap_s *map;
 };
 
-struct cj_cpool_s {
-    //常量类型数组
-    u1 *types;
-    //常量池偏移量数组
-    u4 *offsets;
-    //常量池大小
-    u2 length;
-    unsigned char **cache;
-    u4 tail_offset;
-
-    cj_cp_entry_t **entries;
-    u2 entries_len;
-    u2 *touched;
-
-    u2 *descriptors;
-    u2 descriptors_len;
-
-    u2 *classes;
-    u2 classes_len;
-
-};
-
 struct cj_class_priv_s {
     //是否被改过标记
     unsigned int dirty;

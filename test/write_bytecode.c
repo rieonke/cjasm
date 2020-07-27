@@ -9,6 +9,7 @@
 #include "cjasm.h"
 #include "../src/cpool.h"
 #include "../src/class.h"
+#include "../src/field.h"
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -63,6 +64,11 @@ void test_check_write(void **state) {
             cj_class_remove_field(CTX, i);
         }
     }
+
+
+    cj_field_t *field = cj_field_new(CTX, 0x2, (const_str) "hello_field", (const_str) "I");
+
+    cj_class_add_field(CTX, field);
 
 
     cj_mem_buf_t *out = cj_class_to_buf(CTX);

@@ -232,14 +232,14 @@ const_str cj_descriptor_replace_type(const_str descriptor, const_str old_element
     *touched = false;
     for (int i = 0; i < desc->parameter_count; ++i) {
         unsigned char *str = desc->parameter_types[i];
-        if (strcmp((char *) str, (char *) old_element) == 0) {
+        if (cj_strcmp(str, old_element)) {
             free(str);
             desc->parameter_types[i] = (unsigned char *) strdup((char *) new_element);
             if (!*touched) *touched = true;
         }
     }
 
-    if (strcmp((char *) desc->type, (char *) old_element) == 0) {
+    if (cj_strcmp(desc->type, old_element)) {
         free(desc->type);
         desc->type = (unsigned char *) strdup((char *) new_element);
         if (!*touched) *touched = true;
@@ -258,7 +258,7 @@ const_str cj_descriptor_replace_type(const_str descriptor, const_str old_element
 void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     if (ctx == NULL || privm(ctx) == NULL) return;
 
-    if (strcmp((char *) ctx->name, (char *) name) == 0) {
+    if (cj_strcmp(ctx->name, name)) {
         return;
     }
 
@@ -288,7 +288,7 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     for (int i = 0; i < cj_cp_get_class_count(cpool); ++i) {
         u2 idx = cj_cp_get_class_idx(cpool, i);
         const_str class_name = cj_cp_get_str(ctx, idx);
-        if (strcmp((char *) class_name, (char *) old_name) == 0) {
+        if (cj_strcmp(class_name, old_name)) {
             cj_cp_update_str(ctx, new_name, strlen((char *) new_name), idx);
         }
     }

@@ -3,8 +3,10 @@
 //
 #include <string.h>
 #include <stdio.h>
-#include "def.h"
 #include "../src/util.h"
+#include "../src/class.h"
+#include "../src/descriptor.h"
+#include "../src/method.h"
 
 #define END printf("}\n");
 #define START_CLASS(cls) printf("class %s {\n", cls);

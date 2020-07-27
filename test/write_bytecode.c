@@ -19,6 +19,7 @@
 #define MINOR_VERSION 0
 
 #define CTX ((cj_class_t*)*state)
+#define NEW_CLASS_NAME  "Test1"
 
 static int setup(void **state) {
 
@@ -42,7 +43,7 @@ static int teardown(void **state) {
 
 void test_check_write(void **state) {
 
-    cj_class_set_name(CTX, (unsigned char *) "Test1");
+    cj_class_set_name(CTX, (unsigned char *) NEW_CLASS_NAME);
     char *str = "Too cultivated use solicitude frequently. Dashwood likewise up consider continue entrance ladyship oh. Wrong guest given purse power is no. Friendship to connection an am considered difficulty. Country met pursuit lasting moments why calling certain the. Middletons boisterous our way understood law. Among state cease how and sight since shall. Material did pleasure breeding our humanity she contempt had. So ye really mutual no cousin piqued summer result. \n"
                 "Looking started he up perhaps against. How remainder all additions get elsewhere resources. One missed shy wishes supply design answer formed. Prevent on present hastily passage an subject in be. Be happiness arranging so newspaper defective affection ye. Families blessing he in to no daughter. \n"
                 "Death weeks early had their and folly timed put. Hearted forbade on an village ye in fifteen. Age attended betrayed her man raptures laughter. Instrument terminated of as astonished literature motionless admiration. The affection are determine how performed intention discourse but. On merits on so valley indeed assure of. Has add particular boisterous uncommonly are. Early wrong as so manor match. Him necessary shameless discovery consulted one but. \n"
@@ -56,12 +57,15 @@ void test_check_write(void **state) {
     u2 idx = 0;
     cj_cp_put_str(CTX, (unsigned char *) str, strlen(str), &idx);
 
-    assert_string_equal(CTX->name, "Test1");
+    assert_string_equal(CTX->name, NEW_CLASS_NAME);
+
+    u2 original_field_count = CTX->field_count;
 
     for (int i = 0; i < CTX->field_count; ++i) {
         cj_field_t *field = cj_class_get_field(CTX, i);
         if (strstr((char *) field->name, "name") == (char *) field->name && strlen((char *) field->name) > 4) {
             cj_class_remove_field(CTX, i);
+            original_field_count--;
         }
     }
 
@@ -69,14 +73,16 @@ void test_check_write(void **state) {
     cj_field_t *field = cj_field_new(CTX, 0x2, (const_str) "hello_field", (const_str) "I");
 
     cj_class_add_field(CTX, field);
+    original_field_count++;
 
 
     cj_mem_buf_t *out = cj_class_to_buf(CTX);
     size_t len = out->length;
 
     cj_class_t *cls = cj_class_new(out->data, out->length);
-//    const_str str1 = cj_cp_get_str(cls, idx);
-//    assert_string_equal(str,str1);
+    assert_int_equal(original_field_count, cls->field_count);
+    assert_string_equal(NEW_CLASS_NAME, cj_class_get_name(cls));
+
 
     FILE *f = fopen("Test1.class", "wb");
     fwrite(out->data, sizeof(u1), len, f);

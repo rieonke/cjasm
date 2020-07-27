@@ -29,7 +29,6 @@ public final class Test {
     @Ann(name = "CONSTRUCTOR_TEST", balance = 9.9911d, age = 12, num = 1234567890l, tax = 0.032f)
     @VisibleAnn(types = {"v_hello_0", "v_hello_0"})
     private String name;
-    /*
     private String name1;
     private String name2;
     private String name3;
@@ -333,7 +332,6 @@ public final class Test {
     private String name301;
     private String name302;
     private String name303;
-    */
     private int num;
     private Test parent;
     private Integer age = 22221112;

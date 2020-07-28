@@ -15,6 +15,33 @@
 
 #define CJ_CLASS_NAME_DIRTY 0x1
 
+struct cj_class_priv_s {
+    //是否被改过标记
+    u4 dirty;
+    //类的字节码
+    unsigned char const *buf;
+    size_t buf_len;
+
+    //此类的起始偏移量（常量池之后的起始位置）
+    u4 header;
+    cj_cpool_t *cpool;
+
+    u2 this_class;
+    u2 super_class;
+
+    cj_field_group_t *field_group;
+    cj_attribute_group_t **field_attribute_groups;
+
+    cj_method_group_t *method_group;
+    cj_attribute_group_t **method_attribute_groups;
+
+    cj_attribute_group_t *attribute_group;
+    bool annotation_set_initialized;
+    cj_annotation_group_t *annotation_group;
+
+    bool initialized;
+};
+#define priv(c) ((cj_class_priv_t*)(c->priv))
 
 #define cj_str_replace(str, len, find, replace) \
     {                                           \
@@ -32,9 +59,9 @@
  */
 CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
-    const_str ptr = privc(ctx)->buf;
-    u4 offset = privc(ctx)->header + 6;
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    const_str ptr = priv(ctx)->buf;
+    u4 offset = priv(ctx)->header + 6;
+    cj_cpool_t *cpool = priv(ctx)->cpool;
 
     u4 methods_count;
     u2 interfaces_count;
@@ -162,12 +189,12 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     ctx->interface_count = interfaces_count;
     ctx->attr_count = attributes_count;
 
-    privc(ctx)->field_group = cj_field_group_new(fields_count, field_head_offsets, field_tail_offsets);
-    privc(ctx)->method_group = method_set;
-    privc(ctx)->attribute_group = class_attribute_set;
+    priv(ctx)->field_group = cj_field_group_new(fields_count, field_head_offsets, field_tail_offsets);
+    priv(ctx)->method_group = method_set;
+    priv(ctx)->attribute_group = class_attribute_set;
 
-    privc(ctx)->field_attribute_groups = field_attribute_sets;
-    privc(ctx)->method_attribute_groups = method_attribute_sets;
+    priv(ctx)->field_attribute_groups = field_attribute_sets;
+    priv(ctx)->method_attribute_groups = method_attribute_sets;
 
     return true;
 }
@@ -177,8 +204,8 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
 
-    if (privc(ctx)->dirty == 0) {
-        cj_mem_buf_write_str(buf, (char *) privc(ctx)->buf, privc(ctx)->buf_len);
+    if (priv(ctx)->dirty == 0) {
+        cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf, priv(ctx)->buf_len);
     } else {
 
         //copy fields
@@ -186,7 +213,7 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
         cj_mem_buf_t *fields_buf = cj_mem_buf_new();
 
         u2 field_count = 0;
-        for (int i = 0; i < privc(ctx)->field_group->count; ++i) {
+        for (int i = 0; i < priv(ctx)->field_group->count; ++i) {
             cj_field_t *field = cj_class_get_field(ctx, i);
             cj_mem_buf_t *field_buf = cj_field_to_buf(field);
             if (field_buf == NULL) continue;
@@ -204,8 +231,8 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
         cj_mem_buf_free(cp_buf);
 
         cj_mem_buf_write_u2(buf, ctx->access_flags);
-        cj_mem_buf_write_u2(buf, privc(ctx)->this_class);
-        cj_mem_buf_write_u2(buf, privc(ctx)->super_class);
+        cj_mem_buf_write_u2(buf, priv(ctx)->this_class);
+        cj_mem_buf_write_u2(buf, priv(ctx)->super_class);
         cj_mem_buf_write_u2(buf, /*ctx->interface_count*/ 0);
         //skip interfaces
 
@@ -214,10 +241,10 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
         cj_mem_buf_free(fields_buf);
 
 
-        u4 mso = privc(ctx)->method_group->offsets[0];
+        u4 mso = priv(ctx)->method_group->offsets[0];
         mso -= 2;
 
-        cj_mem_buf_write_str(buf, (char *) privc(ctx)->buf + mso, privc(ctx)->buf_len - mso);
+        cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf + mso, priv(ctx)->buf_len - mso);
     }
 
     if (buf != NULL) cj_mem_buf_flush(buf);
@@ -232,14 +259,14 @@ const_str cj_descriptor_replace_type(const_str descriptor, const_str old_element
     *touched = false;
     for (int i = 0; i < desc->parameter_count; ++i) {
         unsigned char *str = desc->parameter_types[i];
-        if (cj_strcmp(str, old_element)) {
+        if (cj_streq(str, old_element)) {
             free(str);
             desc->parameter_types[i] = (unsigned char *) strdup((char *) new_element);
             if (!*touched) *touched = true;
         }
     }
 
-    if (cj_strcmp(desc->type, old_element)) {
+    if (cj_streq(desc->type, old_element)) {
         free(desc->type);
         desc->type = (unsigned char *) strdup((char *) new_element);
         if (!*touched) *touched = true;
@@ -256,9 +283,9 @@ const_str cj_descriptor_replace_type(const_str descriptor, const_str old_element
 }
 
 void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
-    if (ctx == NULL || privm(ctx) == NULL) return;
+    if (ctx == NULL) return;
 
-    if (cj_strcmp(ctx->name, name)) {
+    if (cj_streq(ctx->name, name)) {
         return;
     }
 
@@ -269,10 +296,10 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
 
     u2 index = 0;
     const_str new_name = cj_cp_put_str(ctx, t_name, strlen((char *) t_name), &index);
-    privc(ctx)->dirty |= CJ_CLASS_NAME_DIRTY;
+    priv(ctx)->dirty |= CJ_CLASS_NAME_DIRTY;
 
     // 替换所有包含此类名的descriptor
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cj_cpool_t *cpool = priv(ctx)->cpool;
     for (int i = 0; i < cj_cp_get_descriptor_count(cpool); ++i) {
         bool touched = false;
         u2 idx = cj_cp_get_descriptor_idx(cpool, i);
@@ -288,7 +315,7 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
     for (int i = 0; i < cj_cp_get_class_count(cpool); ++i) {
         u2 idx = cj_cp_get_class_idx(cpool, i);
         const_str class_name = cj_cp_get_str(ctx, idx);
-        if (cj_strcmp(class_name, old_name)) {
+        if (cj_streq(class_name, old_name)) {
             cj_cp_update_str(ctx, new_name, strlen((char *) new_name), idx);
         }
     }
@@ -301,7 +328,7 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
 
 CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str raw) {
 
-    if (privc(ctx)->initialized) {
+    if (priv(ctx)->initialized) {
         cj_sfree((char *) ctx->name);
         cj_sfree((char *) ctx->package);
         cj_sfree((char *) ctx->raw_package);
@@ -367,72 +394,72 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
     cls->priv = priv;
 
     //cj_class_priv_t初始化
-    privc(cls)->initialized = false;
-    privc(cls)->dirty = 0;
-    privc(cls)->header = header;
-    privc(cls)->this_class = this_class;
-    privc(cls)->super_class = super_class;
-    privc(cls)->buf = malloc(sizeof(char) * len);
-    privc(cls)->buf_len = len;
-    privc(cls)->cpool = cpool;
-    privc(cls)->annotation_group = NULL;
-    privc(cls)->annotation_set_initialized = false;
-    memcpy((unsigned char *) privc(cls)->buf, buf, len);
+    priv(cls)->initialized = false;
+    priv(cls)->dirty = 0;
+    priv(cls)->header = header;
+    priv(cls)->this_class = this_class;
+    priv(cls)->super_class = super_class;
+    priv(cls)->buf = malloc(sizeof(char) * len);
+    priv(cls)->buf_len = len;
+    priv(cls)->cpool = cpool;
+    priv(cls)->annotation_group = NULL;
+    priv(cls)->annotation_set_initialized = false;
+    memcpy((unsigned char *) priv(cls)->buf, buf, len);
 
     cj_parse_offset(cls);
 
-    u2 name_index = cj_cp_get_u2(cls, privc(cls)->this_class);
+    u2 name_index = cj_cp_get_u2(cls, priv(cls)->this_class);
 
     const_str raw = cj_cp_get_str(cls, name_index);
     cj_class_update_name(cls, raw);
 
-    privc(cls)->initialized = true;
+    priv(cls)->initialized = true;
 
     return cls;
 }
 
 void cj_class_free(cj_class_t *ctx) {
     if (ctx == NULL) return;
-    cj_sfree((void *) privc(ctx)->buf);
+    cj_sfree((void *) priv(ctx)->buf);
 
-    cj_method_group_free(privc(ctx)->method_group);
-    cj_field_set_free(privc(ctx)->field_group);
+    cj_method_group_free(priv(ctx)->method_group);
+    cj_field_set_free(priv(ctx)->field_group);
 
-    cj_attribute_group_free(privc(ctx)->attribute_group);
-    if (privc(ctx)->method_attribute_groups != NULL) {
+    cj_attribute_group_free(priv(ctx)->attribute_group);
+    if (priv(ctx)->method_attribute_groups != NULL) {
         for (int i = 0; i < ctx->method_count; ++i) {
-            cj_attribute_group_free(privc(ctx)->method_attribute_groups[i]);
+            cj_attribute_group_free(priv(ctx)->method_attribute_groups[i]);
         }
-        cj_sfree(privc(ctx)->method_attribute_groups);
+        cj_sfree(priv(ctx)->method_attribute_groups);
     }
 
-    if (privc(ctx)->field_attribute_groups != NULL) {
+    if (priv(ctx)->field_attribute_groups != NULL) {
 
         for (int i = 0; i < ctx->field_count; ++i) {
-            cj_attribute_group_free(privc(ctx)->field_attribute_groups[i]);
+            cj_attribute_group_free(priv(ctx)->field_attribute_groups[i]);
         }
-        cj_sfree(privc(ctx)->field_attribute_groups);
+        cj_sfree(priv(ctx)->field_attribute_groups);
     }
 
-    cj_cp_free(privc(ctx)->cpool);
+    cj_cp_free(priv(ctx)->cpool);
 
-    if (privc(ctx)->annotation_group != NULL) {
-        cj_annotation_group_free(privc(ctx)->annotation_group);
+    if (priv(ctx)->annotation_group != NULL) {
+        cj_annotation_group_free(priv(ctx)->annotation_group);
     }
     cj_sfree((char *) ctx->name);
     cj_sfree((char *) ctx->package);
     cj_sfree((char *) ctx->raw_package);
 
-    cj_sfree(privc(ctx));
+    cj_sfree(priv(ctx));
     cj_sfree(ctx);
 }
 
 cj_field_t *cj_class_get_field_by_name(cj_class_t *ctx, const_str name) {
-    if (ctx == NULL || privc(ctx) == NULL || privc(ctx)->field_group == NULL) {
+    if (ctx == NULL || priv(ctx) == NULL || priv(ctx)->field_group == NULL) {
         return NULL;
     }
 
-    cj_field_group_t *set = privc(ctx)->field_group;
+    cj_field_group_t *set = priv(ctx)->field_group;
     cj_field_t *field = cj_field_group_get_by_name(ctx, set, name);
     return field;
 }
@@ -440,22 +467,22 @@ cj_field_t *cj_class_get_field_by_name(cj_class_t *ctx, const_str name) {
 bool cj_class_remove_field(cj_class_t *ctx, u2 idx) {
 
     cj_field_t *field = cj_class_get_field(ctx, idx);
-    if (field == NULL || privf(field) == NULL) return false;
+    if (field == NULL) return false;
 
-    privf(field)->dirty |= 0x8000;
+    cj_field_mark_removed(field);
 
     return false;
 }
 
 bool cj_class_add_field(cj_class_t *ctx, cj_field_t *field) {
 
-    if (field == NULL || ctx == NULL || privc(ctx) == NULL) return false;
+    if (field == NULL || ctx == NULL || priv(ctx) == NULL) return false;
 
     if (field->klass == NULL) {
         field->klass = ctx;
     }
 
-    cj_field_group_add(ctx, privc(ctx)->field_group, field);
+    cj_field_group_add(ctx, priv(ctx)->field_group, field);
 
     return true;
 }
@@ -466,16 +493,16 @@ cj_modifiers_t cj_class_get_modifiers(cj_class_t *cls) {
 
 cj_annotation_group_t *cj_class_get_annotation_group(cj_class_t *cls) {
 
-    if (cls == NULL || privc(cls) == NULL || privc(cls)->attribute_group == NULL) { return 0; }
+    if (cls == NULL || priv(cls) == NULL || priv(cls)->attribute_group == NULL) { return 0; }
 
-    if (privc(cls)->annotation_group == NULL && !privc(cls)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(cls, privc(cls)->attribute_group, &privc(cls)->annotation_group);
-        privc(cls)->annotation_set_initialized = init;
+    if (priv(cls)->annotation_group == NULL && !priv(cls)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(cls, priv(cls)->attribute_group, &priv(cls)->annotation_group);
+        priv(cls)->annotation_set_initialized = init;
     }
 
-    if (privc(cls)->annotation_group == NULL) return 0;
+    if (priv(cls)->annotation_group == NULL) return 0;
 
-    return privc(cls)->annotation_group;
+    return priv(cls)->annotation_group;
 }
 
 u2 cj_class_get_field_count(cj_class_t *ctx) {
@@ -505,12 +532,12 @@ const_str cj_class_get_package(cj_class_t *ctx) {
 
 cj_field_t *cj_class_get_field(cj_class_t *ctx, u2 idx) {
     if (ctx->field_count <= 0 ||
-        privc(ctx) == NULL ||
-        privc(ctx)->field_group == NULL) {
+        priv(ctx) == NULL ||
+        priv(ctx)->field_group == NULL) {
         return NULL;
     }
 
-    return cj_field_group_get(ctx, privc(ctx)->field_group, idx);
+    return cj_field_group_get(ctx, priv(ctx)->field_group, idx);
 }
 
 u2 cj_class_get_method_count(cj_class_t *ctx) {
@@ -519,13 +546,13 @@ u2 cj_class_get_method_count(cj_class_t *ctx) {
 
 cj_method_t *cj_class_get_method(cj_class_t *ctx, u2 idx) {
     if (ctx == NULL ||
-        privc(ctx) == NULL ||
+        priv(ctx) == NULL ||
         idx >= ctx->method_count ||
-        privc(ctx)->method_group == NULL) {
+        priv(ctx)->method_group == NULL) {
         return NULL;
     }
 
-    return cj_method_group_get(ctx, privc(ctx)->method_group, idx);
+    return cj_method_group_get(ctx, priv(ctx)->method_group, idx);
 
 }
 
@@ -535,38 +562,56 @@ u2 cj_class_get_attribute_count(cj_class_t *ctx) {
 
 cj_attribute_t *cj_class_get_attribute(cj_class_t *ctx, u2 idx) {
     if (ctx == NULL ||
-        privc(ctx) == NULL ||
-        privc(ctx)->attribute_group == NULL ||
-        idx >= privc(ctx)->attribute_group->count) {
+        priv(ctx) == NULL ||
+        priv(ctx)->attribute_group == NULL ||
+        idx >= priv(ctx)->attribute_group->count) {
         return NULL;
     }
 
-    return cj_attribute_group_get(ctx, privc(ctx)->attribute_group, idx);
+    return cj_attribute_group_get(ctx, priv(ctx)->attribute_group, idx);
 }
 
 u2 cj_class_get_annotation_count(cj_class_t *ctx) {
 
-    if (ctx == NULL || privc(ctx) == NULL || privc(ctx)->attribute_group == NULL) { return 0; }
+    if (ctx == NULL || priv(ctx) == NULL || priv(ctx)->attribute_group == NULL) { return 0; }
 
-    if (privc(ctx)->annotation_group == NULL && !privc(ctx)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(ctx, privc(ctx)->attribute_group, &privc(ctx)->annotation_group);
-        privc(ctx)->annotation_set_initialized = init;
+    if (priv(ctx)->annotation_group == NULL && !priv(ctx)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(ctx, priv(ctx)->attribute_group, &priv(ctx)->annotation_group);
+        priv(ctx)->annotation_set_initialized = init;
     }
 
-    if (privc(ctx)->annotation_group == NULL) return 0;
-    return privc(ctx)->annotation_group->count;
+    if (priv(ctx)->annotation_group == NULL) return 0;
+    return priv(ctx)->annotation_group->count;
 }
 
 cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
 
-    if (ctx == NULL || privc(ctx) == NULL) return NULL;
+    if (ctx == NULL || priv(ctx) == NULL) return NULL;
     u2 attr_count = cj_class_get_attribute_count(ctx);
     if (idx >= attr_count) return NULL;
 
-    if (privc(ctx)->annotation_group == NULL && !privc(ctx)->annotation_set_initialized) {
-        bool init = cj_annotation_group_init(ctx, privc(ctx)->attribute_group, &privc(ctx)->annotation_group);
-        privc(ctx)->annotation_set_initialized = init;
+    if (priv(ctx)->annotation_group == NULL && !priv(ctx)->annotation_set_initialized) {
+        bool init = cj_annotation_group_init(ctx, priv(ctx)->attribute_group, &priv(ctx)->annotation_group);
+        priv(ctx)->annotation_set_initialized = init;
     }
-    return cj_annotation_group_get(ctx, privc(ctx)->annotation_group, idx);
+    return cj_annotation_group_get(ctx, priv(ctx)->annotation_group, idx);
+}
+
+inline buf_ptr cj_class_get_buf_ptr(cj_class_t *ctx, u4 offset) {
+    if (ctx == NULL || priv(ctx) == NULL || priv(ctx)->buf == NULL || priv(ctx)->buf_len <= offset) return NULL;
+    return priv(ctx)->buf + offset;
+}
+
+inline cj_cpool_t *cj_class_get_cpool(cj_class_t *ctx) {
+    if (ctx == NULL || priv(ctx) == NULL) return NULL;
+    return priv(ctx)->cpool;
+}
+
+inline cj_attribute_group_t *cj_class_get_field_attribute_group(cj_class_t *cls, u2 idx) {
+    return priv(cls)->field_attribute_groups[idx];
+}
+
+inline cj_attribute_group_t *cj_class_get_method_attribute_group(cj_class_t *cls, u2 idx) {
+    return priv(cls)->method_attribute_groups[idx];;
 }
 

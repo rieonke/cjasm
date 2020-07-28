@@ -194,6 +194,16 @@ cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx);
  */
 cj_annotation_group_t *cj_class_get_annotation_group(cj_class_t *cls);
 
+
+/**
+ * 获取当前字节码位置指针.
+ * 返回值不可释放
+ * @param ctx
+ * @param offset 偏移位置
+ * @return
+ */
+buf_ptr cj_class_get_buf_ptr(cj_class_t *ctx, u4 offset);
+
 /**
  * 生成字节码.
  * @param ctx cj 类
@@ -203,9 +213,13 @@ cj_annotation_group_t *cj_class_get_annotation_group(cj_class_t *cls);
  */
 cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx);
 
+cj_cpool_t *cj_class_get_cpool(cj_class_t *ctx);
 
 bool cj_class_add_annotation(cj_class_t *ctx, cj_annotation_t *ann, bool visible);
 
+cj_attribute_group_t *cj_class_get_method_attribute_group(cj_class_t *cls, u2 idx);
+
+cj_attribute_group_t *cj_class_get_field_attribute_group(cj_class_t *cls, u2 idx);
 
 CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str name);
 

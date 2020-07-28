@@ -36,8 +36,8 @@ cj_mem_buf_t *cj_cp_to_buf2(cj_class_t *ctx) {
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
 
-    buf_ptr ptr = privc(ctx)->buf;
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    buf_ptr ptr = cj_class_get_buf_ptr(ctx, 0);
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
     u2 cpool_len = cpool->length; //常量池从1开始
 
     u4 start = 10;
@@ -327,7 +327,7 @@ void cj_cp_free(cj_cpool_t *cpool) {
 
 const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
 
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
     if (idx >= cpool->length && cpool->entries == NULL) {
         return NULL;
     }
@@ -345,8 +345,7 @@ const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
     if (cpool->length > idx) {
         if (cpool->cache[idx] == NULL) {
             u2 offset = cpool->offsets[idx];
-            const_str ptr = privc(ctx)->buf + offset;
-
+            buf_ptr ptr = cj_class_get_buf_ptr(ctx, offset);
             u2 len = cj_ru2(ptr);
             cpool->cache[idx] = malloc(sizeof(char) * (len + 1));
             cpool->cache[idx][len] = 0;
@@ -367,13 +366,19 @@ const_str cj_cp_get_str(cj_class_t *ctx, u2 idx) {
 }
 
 u4 cj_cp_get_u4(cj_class_t *ctx, u2 idx) {
-    u2 offset = privc(ctx)->cpool->offsets[idx];
-    return cj_ru4(privc(ctx)->buf + offset);
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
+    u2 offset = cpool->offsets[idx];
+    buf_ptr buf_ptr = cj_class_get_buf_ptr(ctx, offset);
+
+    return cj_ru4(buf_ptr);
 }
 
 u8 cj_cp_get_u8(cj_class_t *ctx, u2 idx) {
-    u2 offset = privc(ctx)->cpool->offsets[idx];
-    return cj_ru8(privc(ctx)->buf + offset);
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
+    u2 offset = cpool->offsets[idx];
+    buf_ptr buf_ptr = cj_class_get_buf_ptr(ctx, offset);
+
+    return cj_ru8(buf_ptr);
 }
 
 int cj_cp_get_int(cj_class_t *ctx, u2 idx) {
@@ -442,7 +447,7 @@ double cj_cp_get_double(cj_class_t *ctx, u2 idx) {
 CJ_INTERNAL const_str cj_cp_put_str(cj_class_t *ctx, const_str name, size_t len, u2 *index) {
 
     //检查当前常量池中是否有该字符串，如果没有，则新建一个
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
     if (cpool == NULL || cpool->map == NULL) {
         return NULL;
     }
@@ -494,7 +499,7 @@ CJ_INTERNAL const_str cj_cp_put_str2(cj_class_t *ctx, const_str name, size_t len
     // 检查现有的常量池中是否有当前字符串
     // 如果有，则直接返回现有的字符串
     // 如果不存在，则将该字符串放置于新的常量池中
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
     for (int i = 1; i < cpool->length; ++i) {
         u1 type = cpool->types[i];
         if (type == CONSTANT_Utf8) {
@@ -545,7 +550,7 @@ CJ_INTERNAL bool cj_cp_update_str(cj_class_t *ctx, const_str name, size_t len, u
         return false; //nothing changed
     }
 
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
     cpool->touched[index] = new_idx;
 
     return true;
@@ -553,9 +558,11 @@ CJ_INTERNAL bool cj_cp_update_str(cj_class_t *ctx, const_str name, size_t len, u
 
 CJ_INTERNAL bool cj_cp_update_class(cj_class_t *ctx, u2 idx, u2 name_idx) {
     //todo check
-    cj_cpool_t *cpool = privc(ctx)->cpool;
-    u4 offset = cpool->offsets[idx];
-    cj_wu2(privc(ctx)->buf + offset, name_idx);
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
+    u2 offset = cpool->offsets[idx];
+    buf_ptr buf_ptr = cj_class_get_buf_ptr(ctx, offset);
+
+    cj_wu2(buf_ptr, name_idx);
     return true;
 }
 
@@ -584,8 +591,11 @@ u2 cj_cp_get_class_count(cj_cpool_t *cpool) {
 }
 
 CJ_INTERNAL u2 cj_cp_get_u2(cj_class_t *ctx, u2 idx) {
-    u4 offset = privc(ctx)->cpool->offsets[idx];
-    return cj_ru2(privc(ctx)->buf + offset);
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
+    u2 offset = cpool->offsets[idx];
+    buf_ptr buf_ptr = cj_class_get_buf_ptr(ctx, offset);
+
+    return cj_ru2(buf_ptr);
 }
 
 u2 cj_cp_get_length(cj_cpool_t *cpool) {
@@ -593,7 +603,7 @@ u2 cj_cp_get_length(cj_cpool_t *cpool) {
 }
 
 u2 cj_cp_get_str_index(cj_class_t *ctx, const_str str) {
-    cj_cpool_t *cpool = privc(ctx)->cpool;
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
 
     long idx = (long) hashmap_get(cpool->map, (char *) str, strlen((char *) str));
     if (idx == 0) {

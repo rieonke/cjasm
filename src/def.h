@@ -389,17 +389,10 @@ struct cj_method_s {
 };
 
 struct cj_attribute_s {
-    const_str type_name;
     u4 length;
+    const_str type_name;
     enum cj_attr_type type;
     cj_pointer priv;
-};
-
-struct cj_annotation_s {
-    const_str type_name;
-    bool visible;
-    u2 attributes_count;
-    cj_element_pair_t **attributes;
 };
 
 struct cj_descriptor_s {

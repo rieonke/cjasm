@@ -69,10 +69,6 @@
  * 用来表示内部使用的函数，不是公开的方法，不建议被外部调用，不保证向后兼容性
  */
 #define CJ_INTERNAL
-#define privc(c) ((cj_class_priv_t*)(c->priv))
-#define privm(m) ((cj_method_priv_t*)(m->priv))
-#define priva(a) ((cj_attribute_priv_t*)(a->priv))
-#define privf(f) ((cj_field_priv_t*)(f->priv))
 #define cj_sfree(ptr) if(ptr != NULL) free(ptr)
 
 /**
@@ -84,8 +80,6 @@ typedef struct cj_method_priv_s cj_method_priv_t;
 typedef struct cj_field_priv_s cj_field_priv_t;
 typedef struct cj_attribute_group_s cj_attribute_group_t;
 typedef struct cj_method_group_s cj_method_group_t;
-typedef struct cj_annotation_group_s cj_annotation_group_t;
-typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 typedef struct cj_code_iter_s cj_code_iter_t;
 typedef struct cj_insn_s cj_insn_t;
@@ -112,8 +106,6 @@ struct name {                        \
     type **cache;                    \
 };
 
-CJ_CACHEABLE_SET(cj_annotation_group_s, cj_annotation_t)
-CJ_CACHEABLE_SET(cj_attribute_group_s, cj_attribute_t)
 CJ_CACHEABLE_SET(cj_method_group_s, cj_method_t)
 
 
@@ -123,59 +115,6 @@ struct cj_field_group_s {
     u4 *tails;
     cj_field_t **fetched;
     struct hashmap_s *map;
-};
-
-struct cj_class_priv_s {
-    //是否被改过标记
-    unsigned int dirty;
-    //类的字节码
-    unsigned char const *buf;
-    size_t buf_len;
-
-    //此类的起始偏移量（常量池之后的起始位置）
-    u4 header;
-    cj_cpool_t *cpool;
-
-    u2 this_class;
-    u2 super_class;
-
-    cj_field_group_t *field_group;
-    cj_attribute_group_t **field_attribute_groups;
-
-    cj_method_group_t *method_group;
-    cj_attribute_group_t **method_attribute_groups;
-
-    cj_attribute_group_t *attribute_group;
-    bool annotation_set_initialized;
-    cj_annotation_group_t *annotation_group;
-
-    bool initialized;
-};
-
-struct cj_method_priv_s {
-    u4 offset;
-    bool annotation_set_initialized;
-    cj_annotation_group_t *annotation_group;
-    cj_attribute_group_t *attribute_group;
-    cj_code_t *code;
-    cj_descriptor_t *descriptor;
-};
-
-struct cj_field_priv_s {
-    unsigned int dirty;
-    u4 head;
-    u4 tail;
-    bool annotation_set_initialized;
-    cj_annotation_group_t *annotation_group;
-    cj_attribute_group_t *attribute_group;
-};
-
-struct cj_attribute_priv_s {
-    u4 offset;
-};
-
-struct cj_annotation_priv_s {
-    u4 offset;
 };
 
 struct cj_code_iter_s {
@@ -248,7 +187,7 @@ enum cj_cp_type {
 };
 //@formatter:on
 
-#define cj_strcmp(str1, str2) (strcmp((char*)(str1), (char*)(str2)) == 0)
+#define cj_streq(str1, str2) (strcmp((char*)(str1), (char*)(str2)) == 0)
 
 #define cj_n2pow(v) \
     v--;            \

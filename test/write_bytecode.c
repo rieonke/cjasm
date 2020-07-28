@@ -65,6 +65,10 @@ void test_check_write(void **state) {
         if (strstr((char *) field->name, "name") == (char *) field->name && strlen((char *) field->name) > 4) {
             cj_class_remove_field(CTX, i);
             original_field_count--;
+        } else if (cj_streq("name", field->name)) {
+            cj_annotation_t *ann = cj_annotation_new((const_str) "Lcom/example/Inject;", true);
+            cj_field_set_name(field, (const_str) "new_name");
+            cj_field_add_annotation(field, ann);
         }
     }
 

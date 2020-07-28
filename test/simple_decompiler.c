@@ -7,6 +7,8 @@
 #include "../src/class.h"
 #include "../src/descriptor.h"
 #include "../src/method.h"
+#include "../src/attribute.h"
+#include "../src/annotation.h"
 
 #define END printf("}\n");
 #define START_CLASS(cls) printf("class %s {\n", cls);

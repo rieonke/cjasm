@@ -43,31 +43,31 @@ CJ_INTERNAL const char *cj_descriptor_type_to_str(unsigned char *type, int *olen
 
     *need_free = false;
     *olen = 1;
-    if (cj_strcmp(type, "byte")) {
+    if (cj_streq(type, "byte")) {
         return "B";
     }
-    if (cj_strcmp(type, "char")) {
+    if (cj_streq(type, "char")) {
         return "C";
     }
-    if (cj_strcmp(type, "double")) {
+    if (cj_streq(type, "double")) {
         return "D";
     }
-    if (cj_strcmp(type, "float")) {
+    if (cj_streq(type, "float")) {
         return "F";
     }
-    if (cj_strcmp(type, "int")) {
+    if (cj_streq(type, "int")) {
         return "I";
     }
-    if (cj_strcmp(type, "long")) {
+    if (cj_streq(type, "long")) {
         return "J";
     }
-    if (cj_strcmp(type, "short")) {
+    if (cj_streq(type, "short")) {
         return "S";
     }
-    if (cj_strcmp(type, "boolean")) {
+    if (cj_streq(type, "boolean")) {
         return "Z";
     }
-    if (cj_strcmp(type, "void")) {
+    if (cj_streq(type, "void")) {
         return "V";
     }
 

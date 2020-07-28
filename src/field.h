@@ -9,6 +9,7 @@
 #include "mem_buf.h"
 #include "util.h"
 #include "hashmap.h"
+#include "annotation.h"
 
 
 /**
@@ -24,7 +25,7 @@ const_str cj_field_get_name(cj_field_t *field);
  * @param field  字段.
  * @param name 名称.
  */
-void cj_field_set_name(cj_field_t *field, const_str name);
+bool cj_field_set_name(cj_field_t *field, const_str name);
 
 /**
  * 获取字段Access Flags.
@@ -73,7 +74,33 @@ u2 cj_field_get_annotation_count(cj_field_t *field);
  */
 cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx);
 
+/**
+ * 向字段添加注解.
+ * @param field
+ * @param ann
+ * @return
+ */
+bool cj_field_add_annotation(cj_field_t *field, cj_annotation_t *ann);
 
+
+/**
+ * 获取注解集合
+ * 返回值不可被释放.
+ * @param field
+ * @return
+ */
+cj_annotation_group_t *cj_field_get_annotation_group(cj_field_t *field);
+
+/**
+ * 获取属性的集合.
+ * 返回值不可被释放.
+ * @param field
+ * @return
+ */
+cj_attribute_group_t *cj_field_get_attribute_group(cj_field_t *field);
+
+
+void cj_field_mark_removed(cj_field_t *field);
 
 cj_field_group_t *cj_field_group_new(u2 count, u4 *offsets, u4 *tails);
 

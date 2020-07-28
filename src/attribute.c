@@ -5,6 +5,16 @@
 #include "class.h"
 #include "attribute.h"
 #include "cpool.h"
+#include "annotation.h"
+
+struct cj_attribute_priv_s {
+    u4 dirty;
+    u4 head;
+    u4 offset;
+    cj_pointer data;
+};
+
+#define priv(a) ((cj_attribute_priv_t*)(a->priv))
 
 CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets, u4 len) {
     if (len == 0) {
@@ -33,15 +43,15 @@ CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets
 
 CJ_INTERNAL void cj_attribute_free(cj_attribute_t *attr) {
     if (attr == NULL) return;
-    if (priva(attr) != NULL) {
-        cj_sfree(priva(attr));
+    if (priv(attr) != NULL) {
+        cj_sfree(priv(attr));
     }
     cj_sfree(attr);
 }
 
 CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute_group_t *set, u2 idx) {
 
-    if (ctx == NULL || privc(ctx) == NULL || set == NULL || set->count <= idx) {
+    if (ctx == NULL || set == NULL || set->count <= idx) {
         return NULL;
     }
 
@@ -53,11 +63,14 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute
 
         u4 offset = set->offsets[idx];
 
-        u2 attribute_name_index = cj_ru2(privc(ctx)->buf + offset);
-        u4 attribute_length = cj_ru4(privc(ctx)->buf + offset + 2);
+        buf_ptr buf = cj_class_get_buf_ptr(ctx, offset);
+        u2 attribute_name_index = cj_ru2(buf);
+        u4 attribute_length = cj_ru4(buf + 2);
 
         cj_attribute_priv_t *priv = malloc(sizeof(cj_attribute_priv_t));
         priv->offset = offset;
+        priv->dirty = 0;
+        priv->head = offset;
 
         cj_attribute_t *attr = malloc(sizeof(cj_attribute_t));
         attr->type_name = cj_cp_get_str(ctx, attribute_name_index);
@@ -69,6 +82,130 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute
     }
 
     return set->cache[idx];
+}
+
+
+cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr) {
+    if (cls == NULL || attr == NULL || priv(attr) == NULL) return NULL;
+
+    cj_mem_buf_t *buf = cj_mem_buf_new();
+
+    if (priv(attr)->dirty == 0) { //untouched, just copy the original bytecodes
+        buf_ptr start = cj_class_get_buf_ptr(cls, priv(attr)->head);
+        cj_mem_buf_write_str(buf, (char *) start, attr->length + 6); //因为当前长度不包括前六个字节，在此补齐
+        cj_mem_buf_flush(buf);
+        return buf;
+    }
+    /*
+       u2 attribute_name_index;
+       u4 attribute_length;
+       u2 num_annotations;
+       annotation annotations[num_annotations];
+    */
+
+    const char *type_str = cj_attr_type_to_str(attr->type);
+    u2 type_idx = 0;
+    cj_cp_put_str(cls, (const_str) type_str, strlen(type_str), &type_idx);
+
+    u4 attr_len = 0;
+    cj_mem_buf_write_u2(buf, type_idx);
+    cj_mem_buf_write_u4(buf, /*attribute_length*/ 0);
+
+    switch (attr->type) {
+        case CJ_ATTR_NONE:
+            break;
+        case CJ_ATTR_AnnotationDefault:
+            break;
+        case CJ_ATTR_BootstrapMethods:
+            break;
+        case CJ_ATTR_Code:
+            break;
+        case CJ_ATTR_ConstantValue:
+            break;
+        case CJ_ATTR_Deprecated:
+            break;
+        case CJ_ATTR_EnclosingMethod:
+            break;
+        case CJ_ATTR_Exceptions:
+            break;
+        case CJ_ATTR_InnerClasses:
+            break;
+        case CJ_ATTR_LineNumberTable:
+            break;
+        case CJ_ATTR_LocalVariableTable:
+            break;
+        case CJ_ATTR_LocalVariableTypeTable:
+            break;
+        case CJ_ATTR_MethodParameters:
+            break;
+        case CJ_ATTR_Module:
+            break;
+        case CJ_ATTR_ModuleMainClass:
+            break;
+        case CJ_ATTR_ModulePackages:
+            break;
+        case CJ_ATTR_NestHost:
+            break;
+        case CJ_ATTR_NestMembers:
+            break;
+        case CJ_ATTR_RuntimeInvisibleParameterAnnotations:
+            break;
+        case CJ_ATTR_RuntimeInvisibleTypeAnnotations:
+            break;
+        case CJ_ATTR_RuntimeVisibleAnnotations:
+        case CJ_ATTR_RuntimeInvisibleAnnotations: {
+            //将当前attribute转换为一个annotation_group
+            cj_annotation_group_t *ag = priv(attr)->data;
+            cj_mem_buf_t *ann_buf =
+                    cj_annotation_group_to_buf(cls, ag, attr->type == CJ_ATTR_RuntimeVisibleAnnotations);
+            cj_mem_buf_write_buf(buf, ann_buf);
+            attr_len += ann_buf->length;
+            cj_mem_buf_free(ann_buf);
+            break;
+        }
+        case CJ_ATTR_RuntimeVisibleParameterAnnotations:
+            break;
+        case CJ_ATTR_RuntimeVisibleTypeAnnotations:
+            break;
+        case CJ_ATTR_Signature:
+            break;
+        case CJ_ATTR_SourceDebugExtension:
+            break;
+        case CJ_ATTR_SourceFile:
+            break;
+        case CJ_ATTR_StackMapTable:
+            break;
+        case CJ_ATTR_Synthetic:
+            break;
+    }
+
+    cj_mem_buf_flush(buf);
+    cj_wu4(buf->data + 2, attr_len);
+    return buf;
+}
+
+cj_mem_buf_t *cj_attribute_group_to_buf(cj_class_t *cls, cj_attribute_group_t *group) {
+    if (cls == NULL || group == NULL) return NULL;
+    cj_mem_buf_t *buf = cj_mem_buf_new();
+    u2 attr_count = 0;
+
+    cj_mem_buf_write_u2(buf, attr_count);
+
+    for (int i = 0; i < group->count; ++i) {
+        cj_attribute_t *attribute = cj_attribute_group_get(cls, group, i);
+        if (attribute == NULL) continue;
+        cj_mem_buf_t *attr_buf = cj_attribute_to_buf(cls, attribute);
+        if (attr_buf != NULL) {
+            cj_mem_buf_write_buf(buf, attr_buf);
+            cj_mem_buf_free(attr_buf);
+            ++attr_count;
+        }
+    }
+
+    cj_mem_buf_flush(buf);
+    cj_wu2(buf->data, attr_count);
+
+    return buf;
 }
 
 CJ_INTERNAL void cj_attribute_group_free(cj_attribute_group_t *set) {
@@ -125,3 +262,81 @@ enum cj_attr_type cj_attr_parse_type(const_str type_str) {
 #undef comp_type
 }
 
+const char *cj_attr_type_to_str(enum cj_attr_type type) {
+
+    switch (type) {
+        case CJ_ATTR_NONE:
+            return "NONE";
+        case CJ_ATTR_AnnotationDefault:
+            return "AnnotationDefault";
+        case CJ_ATTR_BootstrapMethods:
+            return "BootstrapMethods";
+        case CJ_ATTR_Code:
+            return "Code";
+        case CJ_ATTR_ConstantValue:
+            return "ConstantValue";
+        case CJ_ATTR_Deprecated:
+            return "Deprecated";
+        case CJ_ATTR_EnclosingMethod:
+            return "EnclosingMethod";
+        case CJ_ATTR_Exceptions:
+            return "Exceptions";
+        case CJ_ATTR_InnerClasses:
+            return "InnerClasses";
+        case CJ_ATTR_LineNumberTable:
+            return "LineNumberTable";
+        case CJ_ATTR_LocalVariableTable:
+            return "LocalVariableTable";
+        case CJ_ATTR_LocalVariableTypeTable:
+            return "LocalVariableTypeTable";
+        case CJ_ATTR_MethodParameters:
+            return "MethodParameters";
+        case CJ_ATTR_Module:
+            return "Module";
+        case CJ_ATTR_ModuleMainClass:
+            return "ModuleMainClass";
+        case CJ_ATTR_ModulePackages:
+            return "ModulePackages";
+        case CJ_ATTR_NestHost:
+            return "NestHost";
+        case CJ_ATTR_NestMembers:
+            return "NestMembers";
+        case CJ_ATTR_RuntimeInvisibleAnnotations:
+            return "RuntimeInvisibleAnnotations";
+        case CJ_ATTR_RuntimeInvisibleParameterAnnotations:
+            return "RuntimeInvisibleParameterAnnotations";
+        case CJ_ATTR_RuntimeInvisibleTypeAnnotations:
+            return "RuntimeInvisibleTypeAnnotations";
+        case CJ_ATTR_RuntimeVisibleAnnotations:
+            return "RuntimeVisibleAnnotations";
+        case CJ_ATTR_RuntimeVisibleParameterAnnotations:
+            return "RuntimeVisibleParameterAnnotations";
+        case CJ_ATTR_RuntimeVisibleTypeAnnotations:
+            return "RuntimeVisibleTypeAnnotations";
+        case CJ_ATTR_Signature:
+            return "Signature";
+        case CJ_ATTR_SourceDebugExtension:
+            return "SourceDebugExtension";
+        case CJ_ATTR_SourceFile:
+            return "SourceFile";
+        case CJ_ATTR_StackMapTable:
+            return "StackMapTable";
+        case CJ_ATTR_Synthetic:
+            return "Synthetic";
+    }
+
+}
+
+
+u4 cj_attribute_get_head_offset(cj_attribute_t *attr) {
+    return priv(attr)->head;
+}
+
+void cj_attribute_set_data(cj_attribute_t *attr, void *data) {
+    priv(attr)->data = data;
+}
+
+
+void cj_attribute_mark_dirty(cj_attribute_t *attr) {
+    priv(attr)->dirty |= 0x1;
+}

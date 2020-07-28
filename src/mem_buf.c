@@ -118,6 +118,7 @@ void cj_mem_buf_write_buf(cj_mem_buf_t *buf, cj_mem_buf_t *buf1) {
 }
 
 void cj_mem_buf_free(cj_mem_buf_t *buf) {
+    if (buf == NULL) return;
     cj_sfree(buf->data);
     cj_sfree(buf);
 }

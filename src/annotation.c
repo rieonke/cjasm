@@ -8,22 +8,37 @@
 #include "annotation.h"
 #include "attribute.h"
 
+#define CJ_ANN_D_NEW 0x2
+
+typedef struct cj_annotation_priv_s cj_annotation_priv_t;
+struct cj_annotation_priv_s {
+    u4 dirty;
+    u4 head;
+    u4 length;
+};
+
+#define priv(a) ((cj_annotation_priv_t*)(a->priv))
+
 CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_ptr, u4 *out_offset) {
 
     u4 offset = out_offset == NULL ? 0 : *out_offset;
     cj_annotation_t *annotation = NULL;
     cj_element_pair_t **pairs = NULL;
+    cj_annotation_priv_t *priv = NULL;
+    u4 head = offset;
+    u4 length;
 
-/*
- * annotation {
- *     u2 type_index;
- *     u2 num_element_value_pairs;
- *     {   u2            element_name_index;
- *         element_value value;
- *     } element_value_pairs[num_element_value_pairs];
- * }
- *
- */
+    /*
+      annotation {
+          u2 type_index;
+          u2 num_element_value_pairs;
+          {   u2            element_name_index;
+              element_value value;
+          } element_value_pairs[num_element_value_pairs];
+      }
+
+     */
+
     u2 type_index = cj_ru2(attr_ptr + offset);
     u2 num_pairs = cj_ru2(attr_ptr + offset + 2);
 
@@ -45,10 +60,18 @@ CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_p
         }
     }
 
+    length = offset - head;
+
+    priv = malloc(sizeof(cj_annotation_priv_t));
+    priv->head = head;
+    priv->length = length;
+    priv->dirty = 0;
+
     annotation = malloc(sizeof(cj_annotation_t));
     annotation->type_name = cj_cp_get_str(ctx, type_index);
     annotation->attributes_count = num_pairs;
     annotation->attributes = pairs;
+    annotation->priv = priv;
 
     if (out_offset != NULL) *out_offset = offset;
     return annotation;
@@ -238,6 +261,7 @@ CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann) {
         }
         cj_sfree(ann->attributes);
     }
+    cj_sfree(ann->priv);
     cj_sfree(ann);
 
 
@@ -251,13 +275,16 @@ cj_annotation_t *cj_annotation_group_get(cj_class_t *ctx, cj_annotation_group_t 
     return set->cache[idx];
 }
 
-CJ_INTERNAL bool cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t *attr_set, cj_annotation_group_t **set) {
+CJ_INTERNAL bool
+cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t *attr_set, cj_annotation_group_t **set) {
 
-    cj_annotation_group_t *ann_set = NULL;
+    cj_annotation_group_t *ann_group = NULL;
     u2 ann_count = 0;
+    buf_ptr buf_ptr = cj_class_get_buf_ptr(ctx, 0);
+
     for (int i = 0; i < attr_set->count; ++i) {
         cj_attribute_t *attr = cj_attribute_group_get(ctx, attr_set, i);
-        u4 offset = priva(attr)->offset;
+        u4 offset = cj_attribute_get_head_offset(attr);//priva(attr)->offset;
 
         if (attr == NULL) {
             continue; //fixme: error handling
@@ -274,34 +301,129 @@ CJ_INTERNAL bool cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t 
         }
 
         if (parse) {
-            u2 num_annotations = cj_ru2(privc(ctx)->buf + offset + 6);
+
+            u2 num_annotations = cj_ru2(buf_ptr + offset + 6);
             offset += 8;
 
-            if (ann_set == NULL) {
-                ann_set = malloc(sizeof(cj_annotation_group_t));
-                ann_set->count = num_annotations;
-                ann_set->index = 0;
-                ann_set->offsets = malloc(sizeof(u4) * ann_set->count);
-                ann_set->cache = malloc(sizeof(cj_annotation_t *) * ann_set->count);
+            if (ann_group == NULL) {
+                ann_group = malloc(sizeof(cj_annotation_group_t));
+                ann_group->count = num_annotations;
+                ann_group->offsets = malloc(sizeof(u4) * ann_group->count);
+                ann_group->cache = malloc(sizeof(cj_annotation_t *) * ann_group->count);
             } else {
-                ann_set->count += num_annotations;
-                ann_set->offsets = realloc(ann_set->offsets, sizeof(u4) * ann_set->count);
-                ann_set->cache = realloc(ann_set->cache, sizeof(cj_annotation_t *) * ann_set->count);
+                ann_group->count += num_annotations;
+                ann_group->offsets = realloc(ann_group->offsets, sizeof(u4) * ann_group->count);
+                ann_group->cache = realloc(ann_group->cache, sizeof(cj_annotation_t *) * ann_group->count);
             }
 
             for (int j = 0; j < num_annotations; ++j) {
-                ann_set->offsets[ann_count] = offset;
+                ann_group->offsets[ann_count] = offset;
 
-                cj_annotation_t *ann = cj_annotation_parse(ctx, privc(ctx)->buf, &offset);
+                cj_annotation_t *ann = cj_annotation_parse(ctx, buf_ptr, &offset);
                 ann->visible = visible;
 
-                ann_set->cache[ann_count] = ann;
+                ann_group->cache[ann_count] = ann;
                 ++ann_count;
             }
+            if (visible)
+                ann_group->vi_attr = attr;
+            else
+                ann_group->in_attr = attr;
+            cj_attribute_set_data(attr, ann_group);
         }
     }
 
-    *set = ann_set;
+    *set = ann_group;
     return true;
+}
+
+cj_annotation_t *cj_annotation_new(const_str type, bool visible) {
+
+    cj_annotation_priv_t *priv = malloc(sizeof(cj_annotation_priv_t));
+    priv->dirty = CJ_ANN_D_NEW;
+    priv->head = 0;
+
+    cj_annotation_t *ann = malloc(sizeof(cj_annotation_t));
+    ann->type_name = type; //todo
+    ann->visible = visible;
+    ann->attributes_count = 0;
+    ann->attributes = NULL;
+    ann->priv = priv;
+
+    return ann;
+}
+
+bool cj_annotation_group_add(cj_class_t *cls, cj_annotation_group_t *group, cj_annotation_t *ann) {
+    if (cls == NULL || group == NULL || ann == NULL) return false;
+
+    group->cache = realloc(group->cache, sizeof(cj_annotation_t *) * ++group->count);
+    group->cache[group->count - 1] = ann;
+    if (ann->visible)
+        cj_attribute_mark_dirty(group->vi_attr);
+    else
+        cj_attribute_mark_dirty(group->in_attr);
+
+    return 0;
+}
+
+cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t *group, bool visible) {
+
+    if (cls == NULL || group == NULL) return NULL;
+
+    cj_mem_buf_t *buf = cj_mem_buf_new();
+
+    cj_mem_buf_write_u2(buf, /*annotations count*/0);
+    u2 ann_count = 0;
+    for (int i = 0; i < group->count; ++i) {
+        cj_annotation_t *ann = cj_annotation_group_get(cls, group, i);
+        if (ann == NULL) continue;
+        if (ann->visible == visible) {
+            cj_mem_buf_t *ann_buf = cj_annotation_to_buf(cls, ann);
+            if (ann_buf == NULL) continue;
+            cj_mem_buf_write_buf(buf, ann_buf);
+            cj_mem_buf_free(ann_buf);
+            ++ann_count;
+        }
+    }
+
+    cj_mem_buf_flush(buf);
+    cj_wu2(buf->data, ann_count);
+    return buf;
+}
+
+cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
+
+    if (cls == NULL || ann == NULL) return NULL;
+
+    /*
+      annotation {
+        u2 type_index;
+        u2 num_element_value_pairs;
+        {  u2 element_name_index;
+           element_value value;
+        } element_value_pairs[num_element_value_pairs];
+      }
+     */
+    cj_mem_buf_t *buf = cj_mem_buf_new();
+
+    if (priv(ann)->dirty == 0) {
+        buf_ptr start = cj_class_get_buf_ptr(cls, priv(ann)->head);
+        cj_mem_buf_write_str(buf, (char *) start, priv(ann)->length); //因为当前长度不包括前六个字节，在此补齐
+        cj_mem_buf_flush(buf);
+        return buf;
+    }
+
+    //currently ann->type_name is a raw type name
+    u2 idx = 0;
+    cj_cp_put_str(cls, ann->type_name, strlen((char *) ann->type_name), &idx);
+    cj_mem_buf_write_u2(buf, idx);
+
+    cj_mem_buf_write_u2(buf, 0);
+    if (ann->attributes_count > 0) {
+        //todo fill
+    }
+
+    cj_mem_buf_flush(buf);
+    return buf;
 }
 

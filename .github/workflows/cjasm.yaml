@@ -13,17 +13,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: mkdir_build
-        run: mkdir build
       - name: configure
-        run:
-          shell: cmake ..
-          working-directory: build
+        run: cmake .
       - name: make
-        run:
-          shell: make
-          working-directory: build
+        run: make
       - name: test
-        run:
-          shell: make test
-          working-directory: build
+        run: make test

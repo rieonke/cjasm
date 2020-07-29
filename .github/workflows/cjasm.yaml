@@ -1,0 +1,23 @@
+name: cjasm build and test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: mkdir_build
+        run: mkdir build && cd build
+      - name: configure
+        run: cmake ..
+      - name: make
+        run: make
+      - name: test
+        run: make test

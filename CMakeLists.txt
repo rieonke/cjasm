@@ -49,11 +49,11 @@ function(cjasm_add_ctest name)
     add_executable(test_${name} test/${name}.c)
     target_link_libraries(test_${name} cjasm-static cmocka)
     add_dependencies(test_${name} cjasm-static libcmocka test_java_jar)
-    add_test(NAME test_${name} COMMAND test_${name})
+    add_test(NAME test_${name} COMMAND test_${name} ${ARGN})
 endfunction()
 
 enable_testing()
 cjasm_add_ctest(load_bytecode)
-cjasm_add_ctest(simple_decompiler)
+cjasm_add_ctest(simple_decompiler io/ticup/example/Test.class)
 cjasm_add_ctest(write_bytecode)
 

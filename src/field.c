@@ -349,3 +349,11 @@ cj_attribute_group_t *cj_field_get_attribute_group(cj_field_t *field) {
 void cj_field_mark_removed(cj_field_t *field) {
     priv(field)->dirty |= 0x8000;
 }
+
+bool cj_field_remove_annotation(cj_field_t *field, u2 index) {
+    if (field == NULL || priv(field) == NULL) return false;
+
+    cj_field_init_annotation_group(field);
+
+    return cj_annotation_group_remove(field->klass, priv(field)->annotation_group, index);
+}

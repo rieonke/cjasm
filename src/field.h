@@ -82,6 +82,13 @@ cj_annotation_t *cj_field_get_annotation(cj_field_t *field, u2 idx);
  */
 bool cj_field_add_annotation(cj_field_t *field, cj_annotation_t *ann);
 
+/**
+ * 根据索引删除一个注解
+ * @param field
+ * @param index
+ * @return
+ */
+bool cj_field_remove_annotation(cj_field_t *field, u2 index);
 
 /**
  * 获取注解集合

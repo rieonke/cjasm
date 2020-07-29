@@ -70,6 +70,15 @@ void test_check_write(void **state) {
             cj_annotation_add_kv(ann, (const_str) "hello", (const_str) "world");
 
             cj_field_set_name(field, (const_str) "new_name");
+
+            for (int j = 0; j < cj_field_get_annotation_count(field); ++j) {
+                cj_annotation_t *an = cj_field_get_annotation(field, j);
+                if (cj_streq(an->type_name, "Lio/ticup/example/Ann;")) {
+                    cj_field_remove_annotation(field, j);
+                }
+            }
+
+
             cj_field_add_annotation(field, ann);
         }
     }

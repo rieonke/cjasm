@@ -158,6 +158,10 @@ cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr) {
             cj_annotation_group_t *ag = priv(attr)->data;
             cj_mem_buf_t *ann_buf =
                     cj_annotation_group_to_buf(cls, ag, attr->type == CJ_ATTR_RuntimeVisibleAnnotations);
+            if (ann_buf == NULL) { //如果当前一个注解都没有，那么该属性也就没有意义了，直接返回空，删除该属性。
+                cj_mem_buf_free(buf);
+                return NULL;
+            }
             cj_mem_buf_write_buf(buf, ann_buf);
             attr_len += ann_buf->length;
             cj_mem_buf_free(ann_buf);

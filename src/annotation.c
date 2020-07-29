@@ -9,6 +9,7 @@
 #include "attribute.h"
 
 #define CJ_ANN_D_NEW 0x2
+#define CJ_ANN_D_REMOVE 0x8
 
 typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 struct cj_annotation_priv_s {
@@ -386,6 +387,11 @@ cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t 
         }
     }
 
+    if (ann_count == 0) {
+        cj_mem_buf_free(buf);
+        return NULL;
+    }
+
     cj_mem_buf_flush(buf);
     cj_wu2(buf->data, ann_count);
     return buf;
@@ -502,6 +508,10 @@ cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
 
     if (cls == NULL || ann == NULL) return NULL;
 
+    if (priv(ann)->dirty & CJ_ANN_D_REMOVE) {
+        return NULL;
+    }
+
     /*
       annotation {
         u2 type_index;
@@ -519,6 +529,7 @@ cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
         cj_mem_buf_flush(buf);
         return buf;
     }
+
 
     //currently ann->type_name is a raw type name
     u2 idx = 0;
@@ -569,3 +580,17 @@ bool cj_annotation_add_pair(cj_annotation_t *ann, cj_element_pair_t *pair) {
     return true;
 }
 
+bool cj_annotation_group_remove(cj_class_t *cls, cj_annotation_group_t *group, u2 index) {
+    if (cls == NULL || group == NULL) return false;
+    if (group->count <= index || group->cache[index] == NULL) return false;
+
+    cj_annotation_t *ann = group->cache[index];
+    priv(ann)->dirty |= CJ_ANN_D_REMOVE;
+
+    if (ann->visible)
+        cj_attribute_mark_dirty(group->vi_attr);
+    else
+        cj_attribute_mark_dirty(group->in_attr);
+
+    return true;
+}

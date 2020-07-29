@@ -43,6 +43,8 @@ CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann);
 
 CJ_INTERNAL bool cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t *attr_set, cj_annotation_group_t **set);
 
+bool cj_annotation_group_remove(cj_class_t *cls, cj_annotation_group_t *group, u2 index);
+
 CJ_INTERNAL cj_annotation_t *cj_annotation_group_get(cj_class_t *ctx, cj_annotation_group_t *set, u2 idx);
 
 CJ_INTERNAL void cj_annotation_group_free(cj_annotation_group_t *set);

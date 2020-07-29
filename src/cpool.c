@@ -613,3 +613,36 @@ u2 cj_cp_get_str_index(cj_class_t *ctx, const_str str) {
     return idx & 0xFFFF;
 }
 
+u2 cj_cp_put_u4(cj_class_t *ctx, u4 data) {
+    //todo 性能优化
+    //遍历所有的常量池类型，如果类型为四个字节的，则进行内存对比
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
+    buf_ptr ptr = cj_class_get_buf_ptr(ctx, 0);
+
+    //查找旧有常量池
+
+    for (int i = 1; i < cpool->length; ++i) {
+        u1 type = cpool->types[i];
+        if (type == CONSTANT_Integer || type == CONSTANT_Float) {
+            u4 offset = cpool->offsets[i];
+            if (memcmp(&data, ptr + offset, sizeof(u4)) == 0) {
+                //找到了相同的数据区，直接返回当前
+                return i;
+            }
+        }
+    }
+
+    //查找新建常量池
+    for (int i = 0; i < cpool->entries_len; ++i) {
+        cj_cp_entry_t *entry = cpool->entries[i];
+        if (entry->tag == CONSTANT_Integer || entry->tag == CONSTANT_Float) {
+            if (memcmp(&data, entry->data, sizeof(u4)) == 0) {
+                //找到了相同的数据区，直接返回当前
+                return i + cpool->length;
+            }
+        }
+    }
+
+    return 0;
+}
+

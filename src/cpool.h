@@ -90,6 +90,9 @@ float cj_cp_get_float(cj_class_t *ctx, u2 idx);
  */
 double cj_cp_get_double(cj_class_t *ctx, u2 idx);
 
+u2 cj_cp_put_u4(cj_class_t *ctx, u4 data);
+
+u2 cj_cp_put_u8(cj_class_t *ctx, u8 data);
 
 cj_cpool_t *cj_cp_parse(buf_ptr buf);
 

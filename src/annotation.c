@@ -391,6 +391,113 @@ cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t 
     return buf;
 }
 
+void cj_annotation_write_element_value(cj_class_t *cls, cj_element_t *p, cj_mem_buf_t *buf) {
+    /*
+     * element_value {
+     *     u1 tag;
+     *     union {
+     *         u2 const_value_index;
+     *         {   u2 type_name_index;
+     *             u2 const_name_index;
+     *         } enum_const_value;
+     *         u2 class_info_index;
+     *         annotation annotation_value;
+     *         {   u2            num_values;
+     *             element_value values[num_values];
+     *         } array_value;
+     *     } value;
+     * }
+     *
+     *
+     *  +-----+------------+-------------------------------------+
+     *  | tag |    Type    |    value Item     |  Constant Type   |
+     *  +-----+------------+-------------------+------------------+
+     *  | B   | byte       | const_value_index | CONSTANT_Integer |
+     *  | C   | char       | const_value_index | CONSTANT_Integer |
+     *  | D   | double     | const_value_index | CONSTANT_Double  |
+     *  | F   | float      | const_value_index | CONSTANT_Float   |
+     *  | I   | int        | const_value_index | CONSTANT_Integer |
+     *  | J   | long       | const_value_index | CONSTANT_Long    |
+     *  | S   | short      | const_value_index | CONSTANT_Integer |
+     *  | Z   | boolean    | const_value_index | CONSTANT_Integer |
+     *  | s   | String     | const_value_index | CONSTANT_Utf8    |
+     *  | e   | Enum       | enum_const_value  | Not applicable   |
+     *  | c   | Class      | class_info_index  | Not applicable   |
+     *  | @   | Annotation | annotation_value  | Not applicable   |
+     *  | [   | Array      | array_value       | Not applicable   |
+     *  +-----+------------+-------------------+------------------+
+     */
+
+    cj_element_t *value = p;
+    cj_mem_buf_write_u1(buf, value->tag);
+
+    switch (value->tag) {
+        case 'S': /*short*/
+        case 'Z': /*boolean*/
+        case 'B': /*byte*/
+        case 'C': /*char*/
+        case 'I': /*int*/
+        case 'F': /*float*/
+        {
+            u2 idx = cj_cp_put_u4(cls, value->const_num & 0xFFFFFFFF);
+            cj_mem_buf_write_u2(buf, idx);
+            break;
+        }
+        case 'D': /*double*/
+        case 'J': /*long*/
+        {
+            u2 idx = cj_cp_put_u8(cls, value->const_num);
+            cj_mem_buf_write_u2(buf, idx);
+            break;
+        }
+        case 's':/*string*/
+        {
+            u2 idx = 0;
+            cj_cp_put_str(cls, value->const_str, strlen((char *) value->const_str), &idx);
+            cj_mem_buf_write_u2(buf, idx);
+            break;
+        }
+        case 'e': /*enum*/
+        {
+            u2 type_name_idx = 0;
+            u2 const_name_idx = 0;
+
+            cj_cp_put_str(cls, value->type_name, strlen((char *) value->type_name), &type_name_idx);
+            cj_cp_put_str(cls, value->const_name, strlen((char *) value->const_name), &const_name_idx);
+
+            cj_mem_buf_write_u2(buf, type_name_idx);
+            cj_mem_buf_write_u2(buf, const_name_idx);
+            break;
+        }
+        case 'c': /*class*/
+        {
+            cj_mem_buf_write_u2(buf, value->class_info_index);
+            break;
+        }
+        case '@': /*annotation*/
+        {
+            cj_mem_buf_t *ann_buf = cj_annotation_to_buf(cls, value->annotation);
+            cj_mem_buf_write_buf(buf, ann_buf);
+            break;
+        }
+        case '[': /*array*/
+        {
+            cj_mem_buf_write_u2(buf, value->element_count);
+
+            for (int i = 0; i < value->element_count; ++i) {
+
+                cj_element_t *el = value->elements[i];
+                cj_annotation_write_element_value(cls, el, buf);
+
+            }
+            break;
+        }
+        default:
+            fprintf(stderr, "ERROR: invalid annotation, unknown element value tag: %c\n", value->tag);
+    }
+
+}
+
 cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
 
     if (cls == NULL || ann == NULL) return NULL;
@@ -418,12 +525,47 @@ cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
     cj_cp_put_str(cls, ann->type_name, strlen((char *) ann->type_name), &idx);
     cj_mem_buf_write_u2(buf, idx);
 
-    cj_mem_buf_write_u2(buf, 0);
+    cj_mem_buf_write_u2(buf, ann->attributes_count);
     if (ann->attributes_count > 0) {
-        //todo fill
+        for (int i = 0; i < ann->attributes_count; ++i) {
+            cj_element_pair_t *pair = ann->attributes[i];
+            //write name_index
+            u2 name_index = 0;
+            cj_cp_put_str(cls, pair->name, strlen((char *) pair->name), &name_index);
+            cj_mem_buf_write_u2(buf, name_index);
+            cj_annotation_write_element_value(cls, pair->value, buf);
+        }
     }
 
     cj_mem_buf_flush(buf);
     return buf;
+}
+
+bool cj_annotation_add_kv(cj_annotation_t *ann, const_str key, const_str value) {
+    if (ann == NULL || key == NULL) return false;
+
+    cj_element_pair_t *pair = malloc(sizeof(cj_element_pair_t));
+    cj_element_t *element = malloc(sizeof(cj_element_t));
+
+    element->tag = 's';
+    element->const_str = (const_str) value;
+    pair->name = (const_str) key;
+    pair->value = element;
+
+    return cj_annotation_add_pair(ann, pair);
+}
+
+bool cj_annotation_add_pair(cj_annotation_t *ann, cj_element_pair_t *pair) {
+    if (ann == NULL || pair == NULL) return false;
+
+    if (ann->attributes == NULL) {
+        ann->attributes = malloc(sizeof(cj_element_pair_t *) * ++ann->attributes_count);
+    } else {
+        ann->attributes = realloc(ann->attributes, sizeof(cj_element_pair_t *) * ++ann->attributes_count);
+    }
+
+    ann->attributes[ann->attributes_count - 1] = pair;
+
+    return true;
 }
 

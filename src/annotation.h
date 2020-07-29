@@ -29,6 +29,10 @@ struct cj_annotation_s {
 
 cj_annotation_t *cj_annotation_new(const_str type, bool visible);
 
+bool cj_annotation_add_kv(cj_annotation_t *ann, const_str key, const_str value);
+
+bool cj_annotation_add_pair(cj_annotation_t *ann, cj_element_pair_t *pair);
+
 bool cj_annotation_group_add(cj_class_t *cls, cj_annotation_group_t *group, cj_annotation_t *ann);
 
 CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_ptr, u4 *out_offset);

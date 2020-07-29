@@ -98,17 +98,6 @@ struct cj_cp_entry_s {
     unsigned char *data;
 };
 
-#define CJ_CACHEABLE_SET(name, type) \
-struct name {                        \
-    u2 index;                        \
-    u2 count;                        \
-    u4 *offsets;                     \
-    type **cache;                    \
-};
-
-CJ_CACHEABLE_SET(cj_method_group_s, cj_method_t)
-
-
 struct cj_field_group_s {
     u2 count;
     u4 *heads;

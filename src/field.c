@@ -10,8 +10,6 @@
 #include "cpool.h"
 #include "class.h"
 
-#define CJ_FIELD_D_NEW 0x2
-#define CJ_FIELD_D_NAME_CHANGED 0x4
 #define priv(f) ((cj_field_priv_t*)(f->priv))
 
 struct cj_field_priv_s {
@@ -62,7 +60,7 @@ bool cj_field_group_add(cj_class_t *ctx, cj_field_group_t *group, cj_field_t *fi
 
     if (field->priv == NULL) {
         field->priv = malloc(sizeof(cj_field_priv_t));
-        priv(field)->dirty = CJ_FIELD_D_NEW;
+        priv(field)->dirty = CJ_DIRTY_NEW;
         priv(field)->annotation_set_initialized = false;
         priv(field)->attribute_group = NULL;
         priv(field)->annotation_group = NULL;
@@ -126,7 +124,7 @@ CJ_INTERNAL cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *se
         field->priv = calloc(1, sizeof(cj_field_priv_t));
         priv(field)->head = head;
         priv(field)->tail = tail;
-        priv(field)->dirty = 0;
+        priv(field)->dirty = CJ_DIRTY_CLEAN;
         priv(field)->attribute_group = cj_class_get_field_attribute_group(ctx, idx);
         priv(field)->annotation_group = NULL;
         priv(field)->annotation_set_initialized = false;
@@ -157,13 +155,13 @@ CJ_INTERNAL void cj_field_set_free(cj_field_group_t *set) {
 cj_mem_buf_t *cj_field_to_buf(cj_field_t *field) {
     if (field == NULL || priv(field) == NULL) return NULL;
 
-    if (priv(field)->dirty & 0x8000) { //已被删除
+    if (priv(field)->dirty & CJ_DIRTY_REMOVE) { //已被删除
         return NULL;
     }
 
     cj_mem_buf_t *buf = NULL;
 
-    if (priv(field)->dirty == 0) {
+    if (priv(field)->dirty == CJ_DIRTY_CLEAN) {
         u4 head = priv(field)->head;
         u4 tail = priv(field)->tail;
         if (head >= tail) {
@@ -186,7 +184,7 @@ cj_mem_buf_t *cj_field_to_buf(cj_field_t *field) {
      }
      */
 
-    if (priv(field)->dirty != 0) {
+    if (priv(field)->dirty != CJ_DIRTY_CLEAN) {
         buf = cj_mem_buf_new();
         cj_mem_buf_write_u2(buf, field->access_flags);
         u2 name_idx = 0;
@@ -221,7 +219,7 @@ CJ_INTERNAL void cj_field_free(cj_field_t *field) {
         cj_annotation_group_free(priv(field)->annotation_group);
     }
 
-    if (priv(field)->dirty & CJ_FIELD_D_NEW) {
+    if (priv(field)->dirty & CJ_DIRTY_NEW) {
         cj_sfree((char *) field->name);
         cj_sfree((char *) field->descriptor);
     }
@@ -241,7 +239,7 @@ cj_field_t *cj_field_new(cj_class_t *ctx, u2 access_flags, const_str name, const
     field->descriptor = (const_str) strdup((char *) descriptor);
 
     cj_field_priv_t *priv = malloc(sizeof(cj_field_priv_t));
-    priv->dirty = CJ_FIELD_D_NEW;
+    priv->dirty = CJ_DIRTY_NEW;
     priv->head = 0;
     priv->tail = 0;
     priv->annotation_set_initialized = false;
@@ -322,7 +320,7 @@ bool cj_field_set_name(cj_field_t *field, const_str name) {
     field->name = new_name;
 
     //make dirty
-    priv(field)->dirty = CJ_FIELD_D_NAME_CHANGED;
+    priv(field)->dirty = CJ_DIRTY_NAME;
 
     return true;
 }
@@ -347,7 +345,7 @@ cj_attribute_group_t *cj_field_get_attribute_group(cj_field_t *field) {
 }
 
 void cj_field_mark_removed(cj_field_t *field) {
-    priv(field)->dirty |= 0x8000;
+    priv(field)->dirty |= CJ_DIRTY_REMOVE;
 }
 
 bool cj_field_remove_annotation(cj_field_t *field, u2 index) {

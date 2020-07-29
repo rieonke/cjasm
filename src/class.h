@@ -217,6 +217,8 @@ cj_cpool_t *cj_class_get_cpool(cj_class_t *ctx);
 
 bool cj_class_add_annotation(cj_class_t *ctx, cj_annotation_t *ann, bool visible);
 
+bool cj_class_remove_method(cj_class_t *ctx, u2 index);
+
 cj_attribute_group_t *cj_class_get_method_attribute_group(cj_class_t *cls, u2 idx);
 
 cj_attribute_group_t *cj_class_get_field_attribute_group(cj_class_t *cls, u2 idx);

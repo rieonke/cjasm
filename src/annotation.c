@@ -8,9 +8,6 @@
 #include "annotation.h"
 #include "attribute.h"
 
-#define CJ_ANN_D_NEW 0x2
-#define CJ_ANN_D_REMOVE 0x8
-
 typedef struct cj_annotation_priv_s cj_annotation_priv_t;
 struct cj_annotation_priv_s {
     u4 dirty;
@@ -66,7 +63,7 @@ CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_p
     priv = malloc(sizeof(cj_annotation_priv_t));
     priv->head = head;
     priv->length = length;
-    priv->dirty = 0;
+    priv->dirty = CJ_DIRTY_CLEAN;
 
     annotation = malloc(sizeof(cj_annotation_t));
     annotation->type_name = cj_cp_get_str(ctx, type_index);
@@ -341,7 +338,7 @@ cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t *attr_set, cj_ann
 cj_annotation_t *cj_annotation_new(const_str type, bool visible) {
 
     cj_annotation_priv_t *priv = malloc(sizeof(cj_annotation_priv_t));
-    priv->dirty = CJ_ANN_D_NEW;
+    priv->dirty = CJ_DIRTY_NEW;
     priv->head = 0;
 
     cj_annotation_t *ann = malloc(sizeof(cj_annotation_t));
@@ -508,7 +505,7 @@ cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
 
     if (cls == NULL || ann == NULL) return NULL;
 
-    if (priv(ann)->dirty & CJ_ANN_D_REMOVE) {
+    if (priv(ann)->dirty & CJ_DIRTY_REMOVE) {
         return NULL;
     }
 
@@ -523,7 +520,7 @@ cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
      */
     cj_mem_buf_t *buf = cj_mem_buf_new();
 
-    if (priv(ann)->dirty == 0) {
+    if (priv(ann)->dirty == CJ_DIRTY_CLEAN) {
         buf_ptr start = cj_class_get_buf_ptr(cls, priv(ann)->head);
         cj_mem_buf_write_str(buf, (char *) start, priv(ann)->length); //因为当前长度不包括前六个字节，在此补齐
         cj_mem_buf_flush(buf);
@@ -585,7 +582,7 @@ bool cj_annotation_group_remove(cj_class_t *cls, cj_annotation_group_t *group, u
     if (group->count <= index || group->cache[index] == NULL) return false;
 
     cj_annotation_t *ann = group->cache[index];
-    priv(ann)->dirty |= CJ_ANN_D_REMOVE;
+    priv(ann)->dirty |= CJ_DIRTY_REMOVE;
 
     if (ann->visible)
         cj_attribute_mark_dirty(group->vi_attr);

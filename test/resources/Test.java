@@ -439,4 +439,8 @@ public final class Test {
         }
     }
 
+    public void willBeRemoved() {
+        System.out.println("hello\n");
+    }
+
 }

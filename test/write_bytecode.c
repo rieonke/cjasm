@@ -83,6 +83,17 @@ void test_check_write(void **state) {
         }
     }
 
+    bool method_removed = false;
+
+    for (int i = 0; i < CTX->method_count; ++i) {
+        cj_method_t *method = cj_class_get_method(CTX, i);
+        if (cj_streq(method->name, "willBeRemoved")) {
+            method_removed = cj_class_remove_method(CTX, i);
+        }
+    }
+
+    assert_true(method_removed);
+
 
     cj_field_t *field = cj_field_new(CTX, 0x2, (const_str) "hello_field", (const_str) "I");
 
@@ -96,6 +107,11 @@ void test_check_write(void **state) {
     cj_class_t *cls = cj_class_new(out->data, out->length);
     assert_int_equal(original_field_count, cls->field_count);
     assert_string_equal(NEW_CLASS_NAME, cj_class_get_name(cls));
+
+    for (int i = 0; i < cls->method_count; ++i) {
+        cj_method_t *method = cj_class_get_method(cls, i);
+        assert_false(cj_streq(method->name, "willBeRemoved"));
+    }
 
 
     FILE *f = fopen("Test1.class", "wb");

@@ -13,8 +13,6 @@
 #include "attribute.h"
 #include "method.h"
 
-#define CJ_CLASS_NAME_DIRTY 0x1
-
 struct cj_class_priv_s {
     //是否被改过标记
     u4 dirty;
@@ -70,7 +68,8 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
     u4 *field_head_offsets = NULL;
     u4 *field_tail_offsets = NULL;
-    cj_method_group_t *method_set = NULL;
+    u4 *method_head_offsets = NULL;
+    u4 *method_tail_offsets = NULL;
 
     cj_attribute_group_t *class_attribute_set = NULL;
     cj_attribute_group_t **field_attribute_sets = NULL;
@@ -124,17 +123,14 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     offset += 2;
 
     if (methods_count > 0) {
-        method_set = malloc(sizeof(cj_method_group_t));
-        method_set->index = 0;
-        method_set->count = methods_count;
-        method_set->cache = NULL;
-        method_set->offsets = malloc(sizeof(u4) * methods_count);
+        method_head_offsets = malloc(sizeof(u4) * methods_count);
+        method_tail_offsets = malloc(sizeof(u4) * methods_count);
 
 
         method_attribute_sets = malloc(sizeof(cj_attribute_group_t *) * methods_count);
 
         for (int i = 0; i < methods_count; ++i) {
-            method_set->offsets[i] = offset;
+            method_head_offsets[i] = offset;
 
             cj_attribute_group_t *attribute_set = NULL;
 
@@ -161,6 +157,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
             }
 
             method_attribute_sets[i] = attribute_set;
+            method_tail_offsets[i] = offset;
         }
     }
 
@@ -190,7 +187,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     ctx->attr_count = attributes_count;
 
     priv(ctx)->field_group = cj_field_group_new(fields_count, field_head_offsets, field_tail_offsets);
-    priv(ctx)->method_group = method_set;
+    priv(ctx)->method_group = cj_method_group_new(methods_count, method_head_offsets, method_tail_offsets);
     priv(ctx)->attribute_group = class_attribute_set;
 
     priv(ctx)->field_attribute_groups = field_attribute_sets;
@@ -204,7 +201,7 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
 
-    if (priv(ctx)->dirty == 0) {
+    if (priv(ctx)->dirty == CJ_DIRTY_CLEAN) {
         cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf, priv(ctx)->buf_len);
     } else {
 
@@ -241,7 +238,11 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
         cj_mem_buf_free(fields_buf);
 
 
-        u4 mso = priv(ctx)->method_group->offsets[0];
+        cj_mem_buf_t *me_buf = cj_method_group_to_buf(ctx, priv(ctx)->method_group);
+        cj_mem_buf_write_buf(buf, me_buf);
+        cj_mem_buf_free(me_buf);
+
+        u4 mso = priv(ctx)->attribute_group->offsets[0];
         mso -= 2;
 
         cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf + mso, priv(ctx)->buf_len - mso);
@@ -296,7 +297,7 @@ void cj_class_set_name(cj_class_t *ctx, unsigned char *name) {
 
     u2 index = 0;
     const_str new_name = cj_cp_put_str(ctx, t_name, strlen((char *) t_name), &index);
-    priv(ctx)->dirty |= CJ_CLASS_NAME_DIRTY;
+    priv(ctx)->dirty |= CJ_DIRTY_NAME;
 
     // 替换所有包含此类名的descriptor
     cj_cpool_t *cpool = priv(ctx)->cpool;
@@ -395,7 +396,7 @@ cj_class_t *cj_class_new(unsigned char *buf, size_t len) {
 
     //cj_class_priv_t初始化
     priv(cls)->initialized = false;
-    priv(cls)->dirty = 0;
+    priv(cls)->dirty = CJ_DIRTY_CLEAN;
     priv(cls)->header = header;
     priv(cls)->this_class = this_class;
     priv(cls)->super_class = super_class;
@@ -613,5 +614,15 @@ inline cj_attribute_group_t *cj_class_get_field_attribute_group(cj_class_t *cls,
 
 inline cj_attribute_group_t *cj_class_get_method_attribute_group(cj_class_t *cls, u2 idx) {
     return priv(cls)->method_attribute_groups[idx];;
+}
+
+bool cj_class_remove_method(cj_class_t *ctx, u2 index) {
+    if (ctx == NULL || priv(ctx) == NULL || priv(ctx)->method_group == NULL) return false;
+    cj_method_t *method = cj_method_group_get(ctx, priv(ctx)->method_group, index);
+    if (method == NULL) return false;
+
+    cj_method_mark_dirty(method, CJ_DIRTY_REMOVE);
+
+    return true;
 }
 

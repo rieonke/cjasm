@@ -69,7 +69,7 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute
 
         cj_attribute_priv_t *priv = malloc(sizeof(cj_attribute_priv_t));
         priv->offset = offset;
-        priv->dirty = 0;
+        priv->dirty = CJ_DIRTY_CLEAN;
         priv->head = offset;
 
         cj_attribute_t *attr = malloc(sizeof(cj_attribute_t));
@@ -90,7 +90,7 @@ cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr) {
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
 
-    if (priv(attr)->dirty == 0) { //untouched, just copy the original bytecodes
+    if (priv(attr)->dirty == CJ_DIRTY_CLEAN) { //untouched, just copy the original bytecodes
         buf_ptr start = cj_class_get_buf_ptr(cls, priv(attr)->head);
         cj_mem_buf_write_str(buf, (char *) start, attr->length + 6); //因为当前长度不包括前六个字节，在此补齐
         cj_mem_buf_flush(buf);
@@ -342,5 +342,5 @@ void cj_attribute_set_data(cj_attribute_t *attr, void *data) {
 
 
 void cj_attribute_mark_dirty(cj_attribute_t *attr) {
-    priv(attr)->dirty |= 0x1;
+    priv(attr)->dirty |= CJ_DIRTY_DIRTY;
 }

@@ -2,6 +2,7 @@
 // Created by Rieon Ke on 2020/7/19.
 //
 #include <assert.h>
+#include <stdio.h>
 #include "def.h"
 #include "class.h"
 #include "descriptor.h"
@@ -15,7 +16,9 @@
 #define priv(m) ((cj_method_priv_t*)(m->priv))
 
 struct cj_method_priv_s {
-    u4 offset;
+    u4 dirty;
+    u4 head;
+    u4 tail;
     bool annotation_set_initialized;
     cj_annotation_group_t *annotation_group;
     cj_attribute_group_t *attribute_group;
@@ -1158,14 +1161,15 @@ CJ_INTERNAL void cj_insn_free(cj_insn_t *insn) {
 
 CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t *set, u2 idx) {
 
-    if (set->cache == NULL) {
-        set->cache = calloc(sizeof(cj_method_t *), ctx->method_count);
+    if (set->fetched == NULL) {
+        set->fetched = calloc(sizeof(cj_method_t *), ctx->method_count);
     }
 
-    if (set->cache[idx] == NULL) {
-        u4 offset = set->offsets[idx];
+    if (set->fetched[idx] == NULL) {
+        u4 head = set->heads[idx];
+        u4 tail = set->tails[idx];
 
-        buf_ptr buf = cj_class_get_buf_ptr(ctx, offset);
+        buf_ptr buf = cj_class_get_buf_ptr(ctx, head);
         u2 access_flags = cj_ru2(buf);
         u2 name_index = cj_ru2(buf + 2);
         u2 descriptor_index = cj_ru2(buf + 4);
@@ -1179,28 +1183,30 @@ CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t 
         method->index = idx;
         method->attribute_count = attributes_count;
         method->priv = calloc(sizeof(cj_method_priv_t), 1);
-        priv(method)->offset = offset;
+        priv(method)->head = head;
+        priv(method)->tail = tail;
         priv(method)->attribute_group = cj_class_get_method_attribute_group(ctx, idx);
         priv(method)->annotation_group = NULL;
         priv(method)->annotation_set_initialized = false;
         priv(method)->code = NULL;
         priv(method)->descriptor = NULL;
 
-        set->cache[idx] = method;
+        set->fetched[idx] = method;
     }
 
-    return set->cache[idx];
+    return set->fetched[idx];
 }
 
 CJ_INTERNAL void cj_method_group_free(cj_method_group_t *set) {
     if (set == NULL) return;
-    cj_sfree(set->offsets);
-    if (set->cache != NULL) {
+    cj_sfree(set->heads);
+    cj_sfree(set->tails);
+    if (set->fetched != NULL) {
         for (int i = 0; i < set->count; ++i) {
-            cj_method_free(set->cache[i]);
+            cj_method_free(set->fetched[i]);
         }
     }
-    cj_sfree(set->cache);
+    cj_sfree(set->fetched);
     cj_sfree(set);
 }
 
@@ -1358,6 +1364,80 @@ const_str cj_method_get_return_type(cj_method_t *method) {
 u2 cj_method_get_parameter_count(cj_method_t *method) {
     cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
     return descriptor->parameter_count;
+}
+
+cj_mem_buf_t *cj_method_to_buf(cj_method_t *method) {
+    if (method == NULL || method->klass == NULL || priv(method) == NULL) return NULL;
+
+    if (priv(method)->dirty & CJ_DIRTY_REMOVE) {
+        return NULL;
+    }
+
+    cj_mem_buf_t *buf = NULL;
+    if (priv(method)->dirty == CJ_DIRTY_CLEAN) {
+
+        cj_debug("untouched method: %s\n", method->name);
+        u4 head = priv(method)->head;
+        u4 tail = priv(method)->tail;
+        if (head >= tail) {
+            return NULL;
+        }
+
+        buf_ptr buf_ptr = cj_class_get_buf_ptr(method->klass, 0);
+
+        buf = cj_mem_buf_new();
+        cj_mem_buf_write_str(buf, (char *) buf_ptr + head, tail - head);
+        return buf;
+    }
+
+
+    return buf;
+}
+
+cj_method_group_t *cj_method_group_new(u2 count, u4 *heads, u4 *tails) {
+    if (count == 0 || heads == NULL || tails == NULL) return NULL;
+
+    cj_method_group_t *group = NULL;
+
+    group = malloc(sizeof(cj_method_group_t));
+    group->index = 0;
+    group->count = count;
+    group->fetched = NULL;
+    group->heads = heads;
+    group->tails = tails;
+
+    return group;
+}
+
+cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group) {
+    if (cls == NULL || group == NULL) return NULL;
+
+    cj_mem_buf_t *buf = cj_mem_buf_new();
+    cj_mem_buf_write_u2(buf, 0);
+
+    u2 count = 0;
+    for (int i = 0; i < group->count; ++i) {
+        cj_method_t *method = cj_method_group_get(cls, group, i);
+        cj_mem_buf_t *m_buf = cj_method_to_buf(method);
+        if (m_buf == NULL) continue;
+        cj_mem_buf_write_buf(buf, m_buf);
+        cj_mem_buf_free(m_buf);
+        ++count;
+    }
+
+    if (count == 0) {
+        cj_mem_buf_free(buf);
+        return NULL;
+    }
+
+    cj_mem_buf_flush(buf);
+    cj_wu2(buf->data, count);
+    return buf;
+}
+
+void cj_method_mark_dirty(cj_method_t *method, u4 flags) {
+    if (method == NULL || priv(method) == NULL) return;
+    priv(method)->dirty |= flags;
 }
 
 

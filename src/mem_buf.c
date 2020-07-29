@@ -100,6 +100,7 @@ void cj_mem_buf_write_str(cj_mem_buf_t *buf, char *str, int len) {
 }
 
 void cj_mem_buf_write_buf(cj_mem_buf_t *buf, cj_mem_buf_t *buf1) {
+    if (buf1 == NULL) return;
     cj_mem_buf_flush(buf1);
     cj_mem_buf_check_full(buf, buf1->length);
 

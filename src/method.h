@@ -7,6 +7,13 @@
 
 #include "util.h"
 
+struct cj_method_group_s {
+    u2 index;
+    u2 count;
+    u4 *heads;
+    u4 *tails;
+    cj_method_t **fetched;
+};
 
 /**
  * 获取方法名.
@@ -86,6 +93,19 @@ const_str cj_method_get_return_type(cj_method_t *method);
  */
 cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method);
 
+/**
+ * 方法生成字节码
+ * 返回值需要释放.
+ * @param method
+ * @return
+ */
+cj_mem_buf_t *cj_method_to_buf(cj_method_t *method);
+
+cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group);
+
+cj_method_group_t *cj_method_group_new(u2 count, u4 *heads, u4 *tails);
+
+void cj_method_mark_dirty(cj_method_t *method, u4 flags);
 
 CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t *set, u2 idx);
 

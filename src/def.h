@@ -445,4 +445,17 @@ struct cj_code_s {
     cj_method_t *method;
 };
 
+#define CJ_DIRTY_CLEAN 0x0
+#define CJ_DIRTY_NEW 0x1
+#define CJ_DIRTY_REMOVE 0x2
+#define CJ_DIRTY_NAME 0x4
+#define CJ_DIRTY_DESC 0x8
+#define CJ_DIRTY_DIRTY 0x8000
+
+#ifdef CJ_DEBUG
+#define cj_debug(...) fprintf(stdout,"[cjasm] "__VA_ARGS__)
+#else
+#define cj_debug(...)
+#endif
+
 #endif //CJASM_DEF_H

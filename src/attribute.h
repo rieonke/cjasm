@@ -18,6 +18,8 @@ struct cj_attribute_group_s {
 };
 
 
+cj_attribute_t *cj_attribute_new(enum cj_attr_type type);
+
 /**
  * 根据属性名解析属性类型.
  * @param type_str 属性名
@@ -28,6 +30,8 @@ enum cj_attr_type cj_attr_parse_type(const_str type_str);
 const char *cj_attr_type_to_str(enum cj_attr_type type);
 
 cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr);
+
+bool cj_attribute_group_add(cj_class_t *cls, cj_attribute_group_t *group, cj_attribute_t *attr);
 
 cj_mem_buf_t *cj_attribute_group_to_buf(cj_class_t *cls, cj_attribute_group_t *group);
 

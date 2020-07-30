@@ -331,6 +331,17 @@ cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t *attr_set, cj_ann
         }
     }
 
+    //todo 如果当前的ann_group是空的，新建一个
+    if (ann_group == NULL) {
+        //如果当前的注解group为NULL，说明当前没有
+        ann_group = malloc(sizeof(cj_annotation_group_t));
+        ann_group->count = 0;
+        ann_group->offsets = NULL;
+        ann_group->cache = NULL;
+        ann_group->in_attr = NULL;
+        ann_group->vi_attr = NULL;
+    }
+
     *set = ann_group;
     return true;
 }
@@ -361,7 +372,7 @@ bool cj_annotation_group_add(cj_class_t *cls, cj_annotation_group_t *group, cj_a
     else
         cj_attribute_mark_dirty(group->in_attr);
 
-    return 0;
+    return true;
 }
 
 cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t *group, bool visible) {
@@ -590,4 +601,16 @@ bool cj_annotation_group_remove(cj_class_t *cls, cj_annotation_group_t *group, u
         cj_attribute_mark_dirty(group->in_attr);
 
     return true;
+}
+
+cj_annotation_group_t *cj_annotation_group_create(u2 count) {
+
+    cj_annotation_group_t *group = malloc(sizeof(cj_annotation_group_t));
+    group->count = 0;
+    group->vi_attr = NULL;
+    group->in_attr = NULL;
+    group->cache = NULL;
+    group->offsets = NULL;
+
+    return group;
 }

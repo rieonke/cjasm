@@ -6,6 +6,9 @@
 #define CJASM_CLASS_H
 
 #include "def.h"
+#include "field.h"
+#include "method.h"
+#include "cpool.h"
 #include "annotation.h"
 #include "mem_buf.h"
 

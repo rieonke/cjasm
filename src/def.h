@@ -24,7 +24,6 @@ typedef const unsigned char *const_str;
 typedef const_str const buf_ptr;
 
 typedef struct cj_class_s cj_class_t;
-typedef struct cj_field_s cj_field_t;
 typedef struct cj_method_s cj_method_t;
 typedef struct cj_attribute_s cj_attribute_t;
 typedef struct cj_annotation_s cj_annotation_t;
@@ -368,16 +367,6 @@ enum cj_opcode {
 
 //@formatter:on
 
-struct cj_field_s {
-    u2 access_flags;
-    cj_class_t *klass;
-    const_str name;
-    const_str descriptor;
-    u2 attribute_count;
-    u2 index;
-    cj_pointer priv;
-};
-
 struct cj_method_s {
     u2 access_flags;
     cj_class_t *klass;
@@ -450,6 +439,7 @@ struct cj_code_s {
 #define CJ_DIRTY_REMOVE 0x2
 #define CJ_DIRTY_NAME 0x4
 #define CJ_DIRTY_DESC 0x8
+#define CJ_DIRTY_ATTR 0x10
 #define CJ_DIRTY_DIRTY 0x8000
 
 #ifdef CJ_DEBUG

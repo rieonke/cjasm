@@ -3,6 +3,7 @@
 //
 
 #include <limits.h>
+#include "util.h"
 #include "field.h"
 #include "hashmap.h"
 #include "annotation.h"
@@ -12,6 +13,7 @@
 
 #define priv(f) ((cj_field_priv_t*)(f->priv))
 
+typedef struct cj_field_priv_s cj_field_priv_t;
 struct cj_field_priv_s {
     u4 dirty;
     u4 head;
@@ -326,10 +328,14 @@ bool cj_field_set_name(cj_field_t *field, const_str name) {
 }
 
 bool cj_field_add_annotation(cj_field_t *field, cj_annotation_t *ann) {
-    if (field == NULL || priv(field) == NULL) return NULL;
+    if (field == NULL || priv(field) == NULL) return false;
 
-    cj_field_init_annotation_group(field);
-    return cj_annotation_group_add(field->klass, priv(field)->annotation_group, ann);
+    cj_annotation_group_init_or_create(field, ann->visible);
+    if (cj_annotation_group_add(field->klass, priv(field)->annotation_group, ann)) {
+        cj_field_mark_dirty(field, CJ_DIRTY_ATTR);
+        return true;
+    }
+    return false;
 }
 
 cj_annotation_group_t *cj_field_get_annotation_group(cj_field_t *field) {
@@ -344,6 +350,11 @@ cj_attribute_group_t *cj_field_get_attribute_group(cj_field_t *field) {
     return priv(field)->attribute_group;
 }
 
+void cj_field_mark_dirty(cj_field_t *field, u4 flag) {
+    priv(field)->dirty |= flag;
+}
+
+
 void cj_field_mark_removed(cj_field_t *field) {
     priv(field)->dirty |= CJ_DIRTY_REMOVE;
 }
@@ -353,5 +364,8 @@ bool cj_field_remove_annotation(cj_field_t *field, u2 index) {
 
     cj_field_init_annotation_group(field);
 
-    return cj_annotation_group_remove(field->klass, priv(field)->annotation_group, index);
+    if (cj_annotation_group_remove(field->klass, priv(field)->annotation_group, index)) {
+        cj_field_mark_dirty(field, CJ_DIRTY_ATTR);
+    }
+    return false;
 }

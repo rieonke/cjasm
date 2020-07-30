@@ -9,6 +9,7 @@
 #include "../src/cpool.h"
 #include "../src/class.h"
 #include "../src/field.h"
+#include "../src/method.h"
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -83,12 +84,25 @@ void test_check_write(void **state) {
         }
     }
 
+    cj_field_t *num_field = cj_class_get_field_by_name(CTX, (const_str) "num");
+    assert_non_null(num_field);
+    cj_annotation_t *num_ann = cj_annotation_new((const_str) "Lcom/example/Inject;", true);
+    cj_annotation_add_kv(num_ann, (const_str) "hello", (const_str) "world");
+    cj_field_add_annotation(num_field, num_ann);
+
+
+
     bool method_removed = false;
 
     for (int i = 0; i < CTX->method_count; ++i) {
         cj_method_t *method = cj_class_get_method(CTX, i);
         if (cj_streq(method->name, "willBeRemoved")) {
             method_removed = cj_class_remove_method(CTX, i);
+        } else if (cj_streq(method->name, "willBeRenamed")) {
+            cj_annotation_t *ann = cj_annotation_new((const_str) "Lcom/example/Inject;", true);
+            cj_annotation_add_kv(ann, (const_str) "hello", (const_str) "world");
+            cj_method_rename(method, (unsigned char *) "afterRename");
+            cj_method_add_annotation(method, ann);
         }
     }
 
@@ -108,10 +122,16 @@ void test_check_write(void **state) {
     assert_int_equal(original_field_count, cls->field_count);
     assert_string_equal(NEW_CLASS_NAME, cj_class_get_name(cls));
 
+    bool rename_found = false;
     for (int i = 0; i < cls->method_count; ++i) {
         cj_method_t *method = cj_class_get_method(cls, i);
         assert_false(cj_streq(method->name, "willBeRemoved"));
+        if (cj_streq(method->name, "afterRename")) {
+            rename_found = true;
+        }
     }
+
+    assert_true(rename_found);
 
 
     FILE *f = fopen("Test1.class", "wb");

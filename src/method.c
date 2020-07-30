@@ -12,13 +12,15 @@
 #include "method.h"
 #include "attribute.h"
 
-#define CJ_TEMP
 #define priv(m) ((cj_method_priv_t*)(m->priv))
 
+typedef struct cj_method_priv_s cj_method_priv_t;
 struct cj_method_priv_s {
     u4 dirty;
     u4 head;
     u4 tail;
+    u2 name_index;
+    u2 desc_index;
     bool annotation_set_initialized;
     cj_annotation_group_t *annotation_group;
     cj_attribute_group_t *attribute_group;
@@ -1185,6 +1187,8 @@ CJ_INTERNAL cj_method_t *cj_method_group_get(cj_class_t *ctx, cj_method_group_t 
         method->priv = calloc(sizeof(cj_method_priv_t), 1);
         priv(method)->head = head;
         priv(method)->tail = tail;
+        priv(method)->name_index = name_index;
+        priv(method)->desc_index = descriptor_index;
         priv(method)->attribute_group = cj_class_get_method_attribute_group(ctx, idx);
         priv(method)->annotation_group = NULL;
         priv(method)->annotation_set_initialized = false;
@@ -1373,7 +1377,7 @@ cj_mem_buf_t *cj_method_to_buf(cj_method_t *method) {
         return NULL;
     }
 
-    cj_mem_buf_t *buf = NULL;
+    cj_mem_buf_t *buf = cj_mem_buf_new();
     if (priv(method)->dirty == CJ_DIRTY_CLEAN) {
 
         cj_debug("untouched method: %s\n", method->name);
@@ -1385,11 +1389,36 @@ cj_mem_buf_t *cj_method_to_buf(cj_method_t *method) {
 
         buf_ptr buf_ptr = cj_class_get_buf_ptr(method->klass, 0);
 
-        buf = cj_mem_buf_new();
         cj_mem_buf_write_str(buf, (char *) buf_ptr + head, tail - head);
         return buf;
     }
 
+    /*
+      method_info {
+          u2             access_flags;
+          u2             name_index;
+          u2             descriptor_index;
+          u2             attributes_count;
+          attribute_info attributes[attributes_count];
+      }
+     */
+
+    u2 name_idx = 0;
+    u2 desc_idx = 0;
+    cj_cp_put_str(method->klass, method->name, strlen((char *) method->name), &name_idx);
+    cj_cp_put_str(method->klass, method->descriptor, strlen((char *) method->descriptor), &desc_idx);
+
+    cj_mem_buf_write_u2(buf, method->access_flags);
+    cj_mem_buf_write_u2(buf, name_idx);
+    cj_mem_buf_write_u2(buf, desc_idx);
+
+    if (priv(method)->attribute_group == NULL) {
+        cj_mem_buf_write_u2(buf, /*attribute_count*/ 0);
+    } else {
+        cj_mem_buf_t *attr_buf = cj_attribute_group_to_buf(method->klass, priv(method)->attribute_group);
+        cj_mem_buf_write_buf(buf, attr_buf);
+        cj_mem_buf_free(attr_buf);
+    }
 
     return buf;
 }
@@ -1438,6 +1467,61 @@ cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group) 
 void cj_method_mark_dirty(cj_method_t *method, u4 flags) {
     if (method == NULL || priv(method) == NULL) return;
     priv(method)->dirty |= flags;
+}
+
+bool cj_method_rename(cj_method_t *method, unsigned char *name) {
+    if (method == NULL || method->klass == NULL || priv(method) == NULL) return false;
+
+    if (cj_streq(name, method->name)) return false;
+
+    u2 idx = 0;
+    method->name = cj_cp_put_str(method->klass, name, strlen((char *) name), &idx);
+    cj_method_mark_dirty(method, CJ_DIRTY_NAME);
+
+    //todo 如果我不想在其他的代码中替换当前的名字呢？比如duplicate & wrap 的情况？
+    //替换所有当前类中的method_ref
+    u2 nt_idx = cj_cp_find_name_and_type(method->klass, priv(method)->name_index, priv(method)->desc_index);
+
+    priv(method)->name_index = idx;
+    cj_cp_update_name_and_type(method->klass, nt_idx, priv(method)->name_index, priv(method)->desc_index);
+
+    return true;
+}
+
+void cj_ann_group_init_or_create(cj_method_t *comp, bool visible) {
+
+    if (!priv(comp)->annotation_set_initialized) {
+        priv(comp)->annotation_set_initialized = cj_annotation_group_init(comp->klass, priv(comp)->attribute_group,
+                                                                          &priv(comp)->annotation_group);
+    }
+
+    if (priv(comp)->attribute_group == NULL) { //create attribute_group
+        cj_attribute_group_t *group = cj_attribute_group_new(0, NULL, NULL);
+        priv(comp)->attribute_group = group;
+    }
+
+    if (priv(comp)->annotation_group == NULL) {
+        cj_attribute_t *attribute = cj_attribute_new(
+                visible ? CJ_ATTR_RuntimeVisibleAnnotations : CJ_ATTR_RuntimeInvisibleAnnotations);
+        cj_annotation_group_t *ann_group = cj_annotation_group_create(0);
+        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group,
+                               attribute); //todo 如果所加入的attr已经存在了，则获取现有的，impl cj_attribute_group_add_or_get
+        if (visible) {
+            ann_group->vi_attr = attribute;
+        } else {
+            ann_group->in_attr = attribute;
+        }
+    }
+
+
+}
+
+bool cj_method_add_annotation(cj_method_t *method, cj_annotation_t *annotation) {
+    if (method == NULL || annotation == NULL || method->klass == NULL) return false;
+
+    cj_annotation_group_init_or_create(method, annotation->visible);
+
+    return cj_annotation_group_add(method->klass, priv(method)->annotation_group, annotation);
 }
 
 

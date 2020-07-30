@@ -7,6 +7,7 @@
 
 #include "util.h"
 
+typedef struct cj_method_group_s cj_method_group_t;
 struct cj_method_group_s {
     u2 index;
     u2 count;
@@ -100,6 +101,21 @@ cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method);
  * @return
  */
 cj_mem_buf_t *cj_method_to_buf(cj_method_t *method);
+
+/**
+ * 对方法进行重新命名
+ * @param method
+ * @return
+ */
+bool cj_method_rename(cj_method_t *method, unsigned char *name);
+
+/**
+ * 向当前方法中添加一个注解
+ * @param method
+ * @param annotation
+ * @return
+ */
+bool cj_method_add_annotation(cj_method_t *method, cj_annotation_t *annotation);
 
 cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group);
 

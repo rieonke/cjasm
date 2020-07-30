@@ -428,6 +428,7 @@ public final class Test {
         t.sayBye();
 
         Thread.sleep(5000);
+        t.willBeRenamed();
 
         Class<?> aClass = Class.forName("io.ticup.example.LazyLoad");
 
@@ -437,6 +438,10 @@ public final class Test {
         while (true) {
             Thread.sleep(1000);
         }
+    }
+
+    public void willBeRenamed() {
+        System.out.println("rename\n");
     }
 
     public void willBeRemoved() {

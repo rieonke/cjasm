@@ -13,6 +13,7 @@
 #include "attribute.h"
 #include "method.h"
 
+typedef struct cj_class_priv_s cj_class_priv_t;
 struct cj_class_priv_s {
     //是否被改过标记
     u4 dirty;

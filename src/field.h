@@ -12,6 +12,27 @@
 #include "annotation.h"
 
 
+typedef struct cj_field_s cj_field_t;
+typedef struct cj_field_group_s cj_field_group_t;
+
+struct cj_field_s {
+    u2 access_flags;
+    cj_class_t *klass;
+    const_str name;
+    const_str descriptor;
+    u2 attribute_count;
+    u2 index;
+    cj_pointer priv;
+};
+
+struct cj_field_group_s {
+    u2 count;
+    u4 *heads;
+    u4 *tails;
+    cj_field_t **fetched;
+    struct hashmap_s *map;
+};
+
 /**
  * 获取字段名.
  * 返回值不可被释放.
@@ -106,6 +127,7 @@ cj_annotation_group_t *cj_field_get_annotation_group(cj_field_t *field);
  */
 cj_attribute_group_t *cj_field_get_attribute_group(cj_field_t *field);
 
+void cj_field_mark_dirty(cj_field_t *field, u4 flag);
 
 void cj_field_mark_removed(cj_field_t *field);
 

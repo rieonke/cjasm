@@ -30,6 +30,8 @@ struct cj_annotation_s {
 
 cj_annotation_t *cj_annotation_new(const_str type, bool visible);
 
+cj_annotation_group_t *cj_annotation_group_create(u2 count);
+
 bool cj_annotation_add_kv(cj_annotation_t *ann, const_str key, const_str value);
 
 bool cj_annotation_add_pair(cj_annotation_t *ann, cj_element_pair_t *pair);

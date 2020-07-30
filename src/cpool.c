@@ -9,6 +9,14 @@
 #include "mem_buf.h"
 
 
+typedef struct cj_cp_entry_s cj_cp_entry_t;
+
+struct cj_cp_entry_s {
+    u1 tag;
+    u2 len;
+    unsigned char *data;
+};
+
 struct cj_cpool_s {
     //常量类型数组
     u1 *types;
@@ -146,7 +154,7 @@ cj_cpool_t *cj_cp_parse(buf_ptr buf) {
 
     //分配内存
     u4 *cp_offsets = malloc(cp_len * sizeof(u4)); //常量池偏移地址映射，根据常量下标[1,cp_len)获取，第0位元素弃用
-    u1 *cp_types = malloc(cp_len * sizeof(u1));
+    u1 *cp_types = calloc(cp_len, sizeof(u1));
     u2 *descriptors = malloc(cp_len * sizeof(u2));
     u2 descriptors_len = 0;
     u2 *classes = malloc(cp_len * sizeof(u2));
@@ -655,5 +663,43 @@ u2 cj_cp_put_u4(cj_class_t *ctx, u4 data) {
 
 u2 cj_cp_put_u8(cj_class_t *ctx, u8 data) {
     return cj_cp_put_data(ctx, &data, 8);
+}
+
+u2 cj_cp_find_name_and_type(cj_class_t *ctx, u2 name_index, u2 desc_index) {
+    if (ctx == NULL || name_index == 0 || desc_index == 0) return 0;
+
+    cj_cpool_t *cpool = cj_class_get_cpool(ctx);
+    for (int i = 1; i < cpool->length; ++i) {
+        u1 type = cpool->types[i];
+        if (type == CONSTANT_NameAndType) {
+            u4 offset = cpool->offsets[i];
+            buf_ptr ptr = cj_class_get_buf_ptr(ctx, offset);
+            u2 name_idx = cj_ru2(ptr);
+            u2 desc_idx = cj_ru2(ptr + 2);
+
+            if (name_index == name_idx && desc_idx == desc_index) {
+                return i;
+            }
+        }
+    }
+
+    return 0;
+}
+
+u2 cj_cp_update_name_and_type(cj_class_t *cls, u2 index, u2 name_index, u2 desc_index) {
+    if (cls == NULL || index == 0 || name_index == 0 || desc_index == 0) return 0;
+    cj_cpool_t *cpool = cj_class_get_cpool(cls);
+
+    if (cpool->length <= index) return 0;
+    u1 type = cpool->types[index];
+    if (type != CONSTANT_NameAndType) return 0;
+
+    u4 offset = cpool->offsets[index];
+    buf_ptr ptr = cj_class_get_buf_ptr(cls, offset);
+
+    cj_wu2(ptr, name_index);
+    cj_wu2(ptr + 2, desc_index);
+
+    return index;
 }
 

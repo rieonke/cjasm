@@ -74,35 +74,13 @@
 /**
  * 内部私有类型，用于存放过程变量，不可以被外部调用，不保证向后兼容性
  */
-typedef struct cj_cp_entry_s cj_cp_entry_t;
-typedef struct cj_class_priv_s cj_class_priv_t;
-typedef struct cj_method_priv_s cj_method_priv_t;
-typedef struct cj_field_priv_s cj_field_priv_t;
-typedef struct cj_method_group_s cj_method_group_t;
-typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 typedef struct cj_code_iter_s cj_code_iter_t;
 typedef struct cj_insn_s cj_insn_t;
-typedef struct cj_cpool_s cj_cpool_t;
 typedef struct cj_buf_s cj_buf_t;
-typedef struct cj_field_group_s cj_field_group_t;
 
 struct cj_buf_s {
     unsigned char *buf;
     unsigned int length;
-};
-
-struct cj_cp_entry_s {
-    u1 tag;
-    u2 len;
-    unsigned char *data;
-};
-
-struct cj_field_group_s {
-    u2 count;
-    u4 *heads;
-    u4 *tails;
-    cj_field_t **fetched;
-    struct hashmap_s *map;
 };
 
 struct cj_code_iter_s {
@@ -183,6 +161,33 @@ enum cj_cp_type {
         v |= v >> _cj_n2pow_i_;       \
     }                  \
     ++v
+
+/*todo 如果所加入的attr已经存在了，则获取现有的，impl cj_attribute_group_add_or_get */ \
+#define cj_annotation_group_init_or_create(comp, visible) \
+    if (!priv(comp)->annotation_set_initialized) { \
+        priv(comp)->annotation_set_initialized = cj_annotation_group_init(comp->klass, priv(comp)->attribute_group, \
+                                                                      &priv(comp)->annotation_group); \
+    } \
+    if (priv(comp)->attribute_group == NULL) {  \
+        cj_attribute_group_t *group = cj_attribute_group_new(0, NULL, NULL); \
+        priv(comp)->attribute_group = group; \
+    } \
+    if (priv(comp)->annotation_group == NULL) { \
+        cj_annotation_group_t *ann_group = cj_annotation_group_create(0); \
+        priv(comp)->annotation_group = ann_group; \
+    } \
+    if (visible && priv(comp)->annotation_group->vi_attr == NULL  ) {  \
+        cj_attribute_t *attribute = cj_attribute_new(CJ_ATTR_RuntimeVisibleAnnotations);\
+        priv(comp)->annotation_group->vi_attr = attribute; \
+        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group, attribute);                                      \
+        cj_attribute_set_data(attribute, priv(comp)->annotation_group); \
+    } \
+    if (!visible &&  priv(comp)->annotation_group->in_attr == NULL) { \
+        cj_attribute_t *attribute = cj_attribute_new(CJ_ATTR_RuntimeInvisibleAnnotations);\
+        priv(comp)->annotation_group->in_attr = attribute; \
+        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group, attribute);                                      \
+        cj_attribute_set_data(attribute, priv(comp)->annotation_group); \
+    }
 
 
 /**

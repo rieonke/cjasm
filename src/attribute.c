@@ -7,6 +7,7 @@
 #include "cpool.h"
 #include "annotation.h"
 
+typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 struct cj_attribute_priv_s {
     u4 dirty;
     u4 head;
@@ -353,3 +354,26 @@ cj_attribute_group_t *cj_attribute_group_new(u2 count, u4 *heads, u4 *tails) {
 
     return group;
 }
+
+bool cj_attribute_group_add(cj_class_t *cls, cj_attribute_group_t *group, cj_attribute_t *attr) {
+
+    if (cls == NULL || group == NULL || attr == NULL) return false;
+    group->fetched = realloc(group->fetched, sizeof(cj_attribute_t *) * ++group->count);
+    group->fetched[group->count - 1] = attr;
+
+    return true;
+}
+
+cj_attribute_t *cj_attribute_new(enum cj_attr_type type) {
+
+    cj_attribute_priv_t *priv = malloc(sizeof(cj_attribute_priv_t));
+    priv->dirty = CJ_DIRTY_NEW;
+    priv->head = 0;
+
+    cj_attribute_t *attr = malloc(sizeof(cj_attribute_t));
+    attr->type = type;
+    attr->length = 0;
+    attr->priv = priv;
+    return attr;
+}
+

@@ -10,7 +10,6 @@
 struct cj_attribute_priv_s {
     u4 dirty;
     u4 head;
-    u4 offset;
     cj_pointer data;
 };
 
@@ -55,22 +54,21 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute
         return NULL;
     }
 
-    if (set->cache == NULL) {
-        set->cache = calloc(sizeof(cj_attribute_t *), set->count);
+    if (set->fetched == NULL) {
+        set->fetched = calloc(sizeof(cj_attribute_t *), set->count);
     }
 
-    if (set->cache[idx] == NULL) {
+    if (set->fetched[idx] == NULL) {
 
-        u4 offset = set->offsets[idx];
+        u4 head = set->heads[idx];
 
-        buf_ptr buf = cj_class_get_buf_ptr(ctx, offset);
+        buf_ptr buf = cj_class_get_buf_ptr(ctx, head);
         u2 attribute_name_index = cj_ru2(buf);
         u4 attribute_length = cj_ru4(buf + 2);
 
         cj_attribute_priv_t *priv = malloc(sizeof(cj_attribute_priv_t));
-        priv->offset = offset;
         priv->dirty = CJ_DIRTY_CLEAN;
-        priv->head = offset;
+        priv->head = head;
 
         cj_attribute_t *attr = malloc(sizeof(cj_attribute_t));
         attr->type_name = cj_cp_get_str(ctx, attribute_name_index);
@@ -78,10 +76,10 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute
         attr->type = cj_attr_parse_type(attr->type_name);
         attr->priv = priv;
 
-        set->cache[idx] = attr;
+        set->fetched[idx] = attr;
     }
 
-    return set->cache[idx];
+    return set->fetched[idx];
 }
 
 
@@ -215,13 +213,14 @@ cj_mem_buf_t *cj_attribute_group_to_buf(cj_class_t *cls, cj_attribute_group_t *g
 CJ_INTERNAL void cj_attribute_group_free(cj_attribute_group_t *set) {
 
     if (set == NULL) return;
-    cj_sfree(set->offsets);
+    cj_sfree(set->heads);
+    cj_sfree(set->tails);
 
-    if (set->cache != NULL) {
+    if (set->fetched != NULL) {
         for (int i = 0; i < set->count; ++i) {
-            cj_attribute_free(set->cache[i]);
+            cj_attribute_free(set->fetched[i]);
         }
-        cj_sfree(set->cache);
+        cj_sfree(set->fetched);
     }
     free(set);
 }
@@ -343,4 +342,14 @@ void cj_attribute_set_data(cj_attribute_t *attr, void *data) {
 
 void cj_attribute_mark_dirty(cj_attribute_t *attr) {
     priv(attr)->dirty |= CJ_DIRTY_DIRTY;
+}
+
+cj_attribute_group_t *cj_attribute_group_new(u2 count, u4 *heads, u4 *tails) {
+    cj_attribute_group_t *group = malloc(sizeof(cj_attribute_group_t));
+    group->count = count;
+    group->fetched = NULL;
+    group->heads = heads;
+    group->tails = tails;
+
+    return group;
 }

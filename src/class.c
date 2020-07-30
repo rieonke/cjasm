@@ -71,7 +71,6 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     u4 *method_head_offsets = NULL;
     u4 *method_tail_offsets = NULL;
 
-    cj_attribute_group_t *class_attribute_set = NULL;
     cj_attribute_group_t **field_attribute_sets = NULL;
     cj_attribute_group_t **method_attribute_sets = NULL;
 
@@ -91,30 +90,28 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
         for (int i = 0; i < fields_count; ++i) {
             field_head_offsets[i] = offset;
 
-            cj_attribute_group_t *attribute_set = NULL;
-
             u2 descriptor_index = cj_ru2(ptr + offset + 4);
             cj_cp_add_descriptor_idx(cpool, descriptor_index);
             u4 attributes_length = cj_ru2(ptr + offset + 6);
             offset += 8;
 
+            u4 *attribute_heads = NULL;
+            u4 *attribute_tails = NULL;
+
             if (attributes_length > 0) {
 
-                attribute_set = malloc(sizeof(cj_attribute_group_t));
-
-                attribute_set->index = i;
-                attribute_set->count = attributes_length;
-                attribute_set->offsets = malloc(sizeof(u4) * attributes_length);
-                attribute_set->cache = NULL;
+                attribute_heads = malloc(sizeof(u4) * attributes_length);
+                attribute_tails = malloc(sizeof(u4) * attributes_length);
 
                 for (int j = 0; j < attributes_length; ++j) {
-                    attribute_set->offsets[j] = offset;
+                    attribute_heads[j] = offset;
                     u4 attribute_length = cj_ru4(ptr + offset + 2);
                     offset += attribute_length + 6;
+                    attribute_tails[j] = offset;
                 }
             }
 
-            field_attribute_sets[i] = attribute_set;
+            field_attribute_sets[i] = cj_attribute_group_new(attributes_length, attribute_heads, attribute_tails);
             field_tail_offsets[i] = offset;
         }
     }
@@ -132,31 +129,30 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
         for (int i = 0; i < methods_count; ++i) {
             method_head_offsets[i] = offset;
 
-            cj_attribute_group_t *attribute_set = NULL;
-
             u2 descriptor_index = cj_ru2(ptr + offset + 4);
             cj_cp_add_descriptor_idx(cpool, descriptor_index);
             u4 attributes_length = cj_ru2(ptr + offset + 6);
             offset += 8;
 
+
+            u4 *attribute_heads = NULL;
+            u4 *attribute_tails = NULL;
+
             if (attributes_length > 0) {
 
-                attribute_set = malloc(sizeof(cj_attribute_group_t));
-                attribute_set->index = i;
-                attribute_set->count = attributes_length;
-                attribute_set->offsets = malloc(sizeof(u4) * attributes_length);
-                attribute_set->cache = NULL;
+                attribute_heads = malloc(sizeof(u4) * attributes_length);
+                attribute_tails = malloc(sizeof(u4) * attributes_length);
 
 
                 for (int j = 0; j < attributes_length; ++j) {
-                    attribute_set->offsets[j] = offset;
-
+                    attribute_heads[j] = offset;
                     u4 attribute_length = cj_ru4(ptr + offset + 2);
                     offset += attribute_length + 6;
+                    attribute_tails[j] = offset;
                 }
             }
 
-            method_attribute_sets[i] = attribute_set;
+            method_attribute_sets[i] = cj_attribute_group_new(attributes_length, attribute_heads, attribute_tails);
             method_tail_offsets[i] = offset;
         }
     }
@@ -164,19 +160,18 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
     attributes_count = cj_ru2(ptr + offset);
     offset += 2;
 
-    class_attribute_set = malloc(sizeof(cj_attribute_group_t));
-    class_attribute_set->index = 0;
-    class_attribute_set->count = attributes_count;
-    class_attribute_set->cache = NULL;
-    class_attribute_set->offsets = NULL;
+    u4 *attribute_heads = NULL;
+    u4 *attribute_tails = NULL;
 
     if (attributes_count > 0) {
-        class_attribute_set->offsets = malloc(sizeof(u4) * attributes_count);
+        attribute_heads = malloc(sizeof(u4) * attributes_count);
+        attribute_tails = malloc(sizeof(u4) * attributes_count);
         for (int i = 0; i < attributes_count; ++i) {
-            class_attribute_set->offsets[i] = offset;
+            attribute_heads[i] = offset;
 
             u4 attribute_length = cj_ru4(ptr + offset + 2);
             offset += attribute_length + 6;
+            attribute_tails[i] = offset;
         }
     }
 
@@ -188,7 +183,7 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 
     priv(ctx)->field_group = cj_field_group_new(fields_count, field_head_offsets, field_tail_offsets);
     priv(ctx)->method_group = cj_method_group_new(methods_count, method_head_offsets, method_tail_offsets);
-    priv(ctx)->attribute_group = class_attribute_set;
+    priv(ctx)->attribute_group = cj_attribute_group_new(attributes_count, attribute_heads, attribute_tails);
 
     priv(ctx)->field_attribute_groups = field_attribute_sets;
     priv(ctx)->method_attribute_groups = method_attribute_sets;
@@ -242,7 +237,7 @@ cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
         cj_mem_buf_write_buf(buf, me_buf);
         cj_mem_buf_free(me_buf);
 
-        u4 mso = priv(ctx)->attribute_group->offsets[0];
+        u4 mso = priv(ctx)->attribute_group->heads[0];
         mso -= 2;
 
         cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf + mso, priv(ctx)->buf_len - mso);

@@ -7,6 +7,7 @@
 
 #include "def.h"
 #include "util.h"
+#include "attribute.h"
 #include "mem_buf.h"
 
 typedef struct cj_annotation_group_s cj_annotation_group_t;

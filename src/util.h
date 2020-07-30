@@ -78,7 +78,6 @@ typedef struct cj_cp_entry_s cj_cp_entry_t;
 typedef struct cj_class_priv_s cj_class_priv_t;
 typedef struct cj_method_priv_s cj_method_priv_t;
 typedef struct cj_field_priv_s cj_field_priv_t;
-typedef struct cj_attribute_group_s cj_attribute_group_t;
 typedef struct cj_method_group_s cj_method_group_t;
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 typedef struct cj_code_iter_s cj_code_iter_t;

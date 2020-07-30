@@ -9,11 +9,12 @@
 #include "util.h"
 #include "mem_buf.h"
 
+typedef struct cj_attribute_group_s cj_attribute_group_t;
 struct cj_attribute_group_s {
-    u2 index;
     u2 count;
-    u4 *offsets;
-    cj_attribute_t **cache;
+    u4 *heads;
+    u4 *tails;
+    cj_attribute_t **fetched;
 };
 
 
@@ -44,5 +45,6 @@ void cj_attribute_set_data(cj_attribute_t *attr, void *data);
 
 void cj_attribute_mark_dirty(cj_attribute_t *attr);
 
+cj_attribute_group_t *cj_attribute_group_new(u2 count, u4 *heads, u4 *tails);
 
 #endif //CJASM_ATTRIBUTE_H

@@ -100,7 +100,7 @@ cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method);
  * @param method
  * @return
  */
-cj_mem_buf_t *cj_method_to_buf(cj_method_t *method);
+bool cj_method_write_buf(cj_method_t *method, cj_mem_buf_t *buf);
 
 /**
  * 对方法进行重新命名
@@ -117,7 +117,7 @@ bool cj_method_rename(cj_method_t *method, unsigned char *name);
  */
 bool cj_method_add_annotation(cj_method_t *method, cj_annotation_t *annotation);
 
-cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group);
+bool cj_method_group_write_buf(cj_class_t *cls, cj_method_group_t *group, cj_mem_buf_t *buf);
 
 cj_method_group_t *cj_method_group_new(u2 count, u4 *heads, u4 *tails);
 

@@ -29,11 +29,11 @@ enum cj_attr_type cj_attr_parse_type(const_str type_str);
 
 const char *cj_attr_type_to_str(enum cj_attr_type type);
 
-cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr);
+bool cj_attribute_write_buf(cj_class_t *cls, cj_attribute_t *attr, cj_mem_buf_t *buf);
 
 bool cj_attribute_group_add(cj_class_t *cls, cj_attribute_group_t *group, cj_attribute_t *attr);
 
-cj_mem_buf_t *cj_attribute_group_to_buf(cj_class_t *cls, cj_attribute_group_t *group);
+bool cj_attribute_group_write_buf(cj_class_t *cls, cj_attribute_group_t *group, cj_mem_buf_t *buf);
 
 CJ_INTERNAL void cj_attribute_parse_offsets(buf_ptr ptr, u4 offset, u4 **offsets, u4 len);
 

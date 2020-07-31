@@ -216,6 +216,10 @@ buf_ptr cj_class_get_buf_ptr(cj_class_t *ctx, u4 offset);
  */
 cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx);
 
+
+bool cj_class_write_buf(cj_class_t *cls, cj_mem_buf_t *buf);
+
+
 cj_cpool_t *cj_class_get_cpool(cj_class_t *ctx);
 
 bool cj_class_add_annotation(cj_class_t *ctx, cj_annotation_t *ann, bool visible);

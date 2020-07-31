@@ -375,36 +375,6 @@ bool cj_annotation_group_add(cj_class_t *cls, cj_annotation_group_t *group, cj_a
     return true;
 }
 
-cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t *group, bool visible) {
-
-    if (cls == NULL || group == NULL) return NULL;
-
-    cj_mem_buf_t *buf = cj_mem_buf_new();
-    cj_mem_buf_pos_t *ann_count_pos = cj_mem_buf_pos(buf);
-    cj_mem_buf_write_u2(buf, /*annotations count*/0);
-    u2 ann_count = 0;
-    for (int i = 0; i < group->count; ++i) {
-        cj_annotation_t *ann = cj_annotation_group_get(cls, group, i);
-        if (ann == NULL) continue;
-        if (ann->visible == visible) {
-            cj_mem_buf_t *ann_buf = cj_annotation_to_buf(cls, ann);
-            if (ann_buf == NULL) continue;
-            cj_mem_buf_write_buf(buf, ann_buf);
-            cj_mem_buf_free(ann_buf);
-            ++ann_count;
-        }
-    }
-
-    if (ann_count == 0) {
-        cj_mem_buf_free(buf);
-        return NULL;
-    }
-
-//    cj_mem_buf_flush(buf);
-    cj_mem_buf_pos_wu2(ann_count_pos, ann_count);
-    return buf;
-}
-
 void cj_annotation_write_element_value(cj_class_t *cls, cj_element_t *p, cj_mem_buf_t *buf) {
     /*
      * element_value {
@@ -490,8 +460,7 @@ void cj_annotation_write_element_value(cj_class_t *cls, cj_element_t *p, cj_mem_
         }
         case '@': /*annotation*/
         {
-            cj_mem_buf_t *ann_buf = cj_annotation_to_buf(cls, value->annotation);
-            cj_mem_buf_write_buf(buf, ann_buf);
+            cj_annotation_write_buf(cls, value->annotation, buf);
             break;
         }
         case '[': /*array*/
@@ -510,54 +479,6 @@ void cj_annotation_write_element_value(cj_class_t *cls, cj_element_t *p, cj_mem_
             fprintf(stderr, "ERROR: invalid annotation, unknown element value tag: %c\n", value->tag);
     }
 
-}
-
-cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann) {
-
-    if (cls == NULL || ann == NULL) return NULL;
-
-    if (priv(ann)->dirty & CJ_DIRTY_REMOVE) {
-        return NULL;
-    }
-
-    /*
-      annotation {
-        u2 type_index;
-        u2 num_element_value_pairs;
-        {  u2 element_name_index;
-           element_value value;
-        } element_value_pairs[num_element_value_pairs];
-      }
-     */
-    cj_mem_buf_t *buf = cj_mem_buf_new();
-
-    if (priv(ann)->dirty == CJ_DIRTY_CLEAN) {
-        buf_ptr start = cj_class_get_buf_ptr(cls, priv(ann)->head);
-        cj_mem_buf_write_str(buf, (char *) start, priv(ann)->length); //因为当前长度不包括前六个字节，在此补齐
-        cj_mem_buf_flush(buf);
-        return buf;
-    }
-
-
-    //currently ann->type_name is a raw type name
-    u2 idx = 0;
-    cj_cp_put_str(cls, ann->type_name, strlen((char *) ann->type_name), &idx);
-    cj_mem_buf_write_u2(buf, idx);
-
-    cj_mem_buf_write_u2(buf, ann->attributes_count);
-    if (ann->attributes_count > 0) {
-        for (int i = 0; i < ann->attributes_count; ++i) {
-            cj_element_pair_t *pair = ann->attributes[i];
-            //write name_index
-            u2 name_index = 0;
-            cj_cp_put_str(cls, pair->name, strlen((char *) pair->name), &name_index);
-            cj_mem_buf_write_u2(buf, name_index);
-            cj_annotation_write_element_value(cls, pair->value, buf);
-        }
-    }
-
-    cj_mem_buf_flush(buf);
-    return buf;
 }
 
 bool cj_annotation_add_kv(cj_annotation_t *ann, const_str key, const_str value) {
@@ -613,4 +534,76 @@ cj_annotation_group_t *cj_annotation_group_create(u2 count) {
     group->offsets = NULL;
 
     return group;
+}
+
+bool cj_annotation_group_write_buf(cj_class_t *cls, cj_annotation_group_t *group, bool visible, cj_mem_buf_t *buf) {
+    if (cls == NULL || group == NULL || buf == NULL) return false;
+
+    cj_mem_buf_pos_t *ann_count_pos = cj_mem_buf_pos(buf);
+    cj_mem_buf_write_u2(buf, /*annotations count*/0);
+    u2 ann_count = 0;
+    for (int i = 0; i < group->count; ++i) {
+        cj_annotation_t *ann = cj_annotation_group_get(cls, group, i);
+        if (ann == NULL) continue;
+        if (ann->visible == visible) {
+            bool ann_st = cj_annotation_write_buf(cls, ann, buf);
+            if (ann_st) {
+                ++ann_count;
+            } else {
+                //todo error
+            }
+        }
+    }
+
+    if (ann_count > 0) {
+        cj_mem_buf_pos_wu2(ann_count_pos, ann_count);
+        return true;
+    } else {
+        cj_mem_buf_back(buf, 2);
+        return false;
+    }
+}
+
+bool cj_annotation_write_buf(cj_class_t *cls, cj_annotation_t *ann, cj_mem_buf_t *buf) {
+
+    if (cls == NULL || ann == NULL || buf == NULL) return false;
+
+    if (priv(ann)->dirty & CJ_DIRTY_REMOVE) {
+        return false;
+    }
+
+    /*
+      annotation {
+        u2 type_index;
+        u2 num_element_value_pairs;
+        {  u2 element_name_index;
+           element_value value;
+        } element_value_pairs[num_element_value_pairs];
+      }
+     */
+    if (priv(ann)->dirty == CJ_DIRTY_CLEAN) {
+        buf_ptr start = cj_class_get_buf_ptr(cls, priv(ann)->head);
+        cj_mem_buf_write_str(buf, (char *) start, priv(ann)->length);
+        return true;
+    }
+
+
+    //currently ann->type_name is a raw type name
+    u2 idx = 0;
+    cj_cp_put_str(cls, ann->type_name, strlen((char *) ann->type_name), &idx);
+    cj_mem_buf_write_u2(buf, idx);
+
+    cj_mem_buf_write_u2(buf, ann->attributes_count);
+    if (ann->attributes_count > 0) {
+        for (int i = 0; i < ann->attributes_count; ++i) {
+            cj_element_pair_t *pair = ann->attributes[i];
+            //write name_index
+            u2 name_index = 0;
+            cj_cp_put_str(cls, pair->name, strlen((char *) pair->name), &name_index);
+            cj_mem_buf_write_u2(buf, name_index);
+            cj_annotation_write_element_value(cls, pair->value, buf);
+        }
+    }
+
+    return true;
 }

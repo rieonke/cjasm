@@ -196,55 +196,8 @@ CJ_INTERNAL bool cj_parse_offset(cj_class_t *ctx) {
 cj_mem_buf_t *cj_class_to_buf(cj_class_t *ctx) {
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
-
-    if (priv(ctx)->dirty == CJ_DIRTY_CLEAN) {
-        cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf, priv(ctx)->buf_len);
-    } else {
-
-        //copy fields
-
-        cj_mem_buf_t *fields_buf = cj_mem_buf_new();
-
-        u2 field_count = 0;
-        for (int i = 0; i < priv(ctx)->field_group->count; ++i) {
-            cj_field_t *field = cj_class_get_field(ctx, i);
-            cj_mem_buf_t *field_buf = cj_field_to_buf(field);
-            if (field_buf == NULL) continue;
-            cj_mem_buf_write_buf(fields_buf, field_buf);
-            cj_mem_buf_free(field_buf);
-            field_count++;
-        }
-
-        cj_mem_buf_write_u4(buf, 0xCAFEBABE);
-        cj_mem_buf_write_u2(buf, ctx->minor_version);
-        cj_mem_buf_write_u2(buf, ctx->major_version);
-
-        cj_mem_buf_t *cp_buf = cj_cp_to_buf2(ctx);
-        cj_mem_buf_write_buf(buf, cp_buf);
-        cj_mem_buf_free(cp_buf);
-
-        cj_mem_buf_write_u2(buf, ctx->access_flags);
-        cj_mem_buf_write_u2(buf, priv(ctx)->this_class);
-        cj_mem_buf_write_u2(buf, priv(ctx)->super_class);
-        cj_mem_buf_write_u2(buf, /*ctx->interface_count*/ 0);
-        //skip interfaces
-
-        cj_mem_buf_write_u2(buf, field_count);
-        cj_mem_buf_write_buf(buf, fields_buf);
-        cj_mem_buf_free(fields_buf);
-
-
-        cj_mem_buf_t *me_buf = cj_method_group_to_buf(ctx, priv(ctx)->method_group);
-        cj_mem_buf_write_buf(buf, me_buf);
-        cj_mem_buf_free(me_buf);
-
-        u4 mso = priv(ctx)->attribute_group->heads[0];
-        mso -= 2;
-
-        cj_mem_buf_write_str(buf, (char *) priv(ctx)->buf + mso, priv(ctx)->buf_len - mso);
-    }
-
-    if (buf != NULL) cj_mem_buf_flush(buf);
+    cj_class_write_buf(ctx, buf);
+    cj_mem_buf_flush(buf);
 
     return buf;
 }
@@ -618,6 +571,62 @@ bool cj_class_remove_method(cj_class_t *ctx, u2 index) {
     if (method == NULL) return false;
 
     cj_method_mark_dirty(method, CJ_DIRTY_REMOVE);
+
+    return true;
+}
+
+bool cj_class_write_buf(cj_class_t *cls, cj_mem_buf_t *buf) {
+    if (cls == NULL || priv(cls) == NULL || buf == NULL) return false;
+
+    if (priv(cls)->dirty == CJ_DIRTY_CLEAN) {
+        cj_mem_buf_write_str(buf, (char *) priv(cls)->buf, priv(cls)->buf_len);
+    } else {
+
+        //copy fields
+
+        cj_mem_buf_t *fields_buf = cj_mem_buf_new();
+
+        u2 field_count = 0;
+        for (int i = 0; i < priv(cls)->field_group->count; ++i) {
+            cj_field_t *field = cj_class_get_field(cls, i);
+            if (cj_field_write_buf(field, fields_buf)) {
+                field_count++;
+            } else {
+                //todo error
+            }
+        }
+
+        cj_mem_buf_t *me_buf = cj_mem_buf_new();
+        cj_method_group_write_buf(cls, priv(cls)->method_group, me_buf);
+
+        cj_mem_buf_write_u4(buf, 0xCAFEBABE);
+        cj_mem_buf_write_u2(buf, cls->minor_version);
+        cj_mem_buf_write_u2(buf, cls->major_version);
+
+        cj_mem_buf_t *cp_buf = cj_cp_to_buf2(cls);
+        cj_mem_buf_write_buf(buf, cp_buf);
+        cj_mem_buf_free(cp_buf);
+
+        cj_mem_buf_write_u2(buf, cls->access_flags);
+        cj_mem_buf_write_u2(buf, priv(cls)->this_class);
+        cj_mem_buf_write_u2(buf, priv(cls)->super_class);
+        cj_mem_buf_write_u2(buf, /*cls->interface_count*/ 0);
+        //skip interfaces
+
+        cj_mem_buf_write_u2(buf, field_count);
+        cj_mem_buf_write_buf(buf, fields_buf);
+        cj_mem_buf_free(fields_buf);
+
+        cj_mem_buf_write_buf(buf, me_buf);
+        cj_mem_buf_free(me_buf);
+
+        u4 mso = priv(cls)->attribute_group->heads[0];
+        mso -= 2;
+
+        cj_mem_buf_write_str(buf, (char *) priv(cls)->buf + mso, priv(cls)->buf_len - mso);
+    }
+
+    if (buf != NULL) cj_mem_buf_flush(buf);
 
     return true;
 }

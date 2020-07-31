@@ -83,137 +83,6 @@ CJ_INTERNAL cj_attribute_t *cj_attribute_group_get(cj_class_t *ctx, cj_attribute
     return set->fetched[idx];
 }
 
-
-cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr) {
-    if (cls == NULL || attr == NULL || priv(attr) == NULL) return NULL;
-
-    cj_mem_buf_t *buf = cj_mem_buf_new();
-
-    if (priv(attr)->dirty == CJ_DIRTY_CLEAN) { //untouched, just copy the original bytecodes
-        buf_ptr start = cj_class_get_buf_ptr(cls, priv(attr)->head);
-        cj_mem_buf_write_str(buf, (char *) start, attr->length + 6); //因为当前长度不包括前六个字节，在此补齐
-        cj_mem_buf_flush(buf);
-        return buf;
-    }
-    /*
-       u2 attribute_name_index;
-       u4 attribute_length;
-       u2 num_annotations;
-       annotation annotations[num_annotations];
-    */
-
-    const char *type_str = cj_attr_type_to_str(attr->type);
-    u2 type_idx = 0;
-    cj_cp_put_str(cls, (const_str) type_str, strlen(type_str), &type_idx);
-
-    u4 attr_len = 0;
-    cj_mem_buf_write_u2(buf, type_idx);
-    cj_mem_buf_pos_t *attr_len_pos = cj_mem_buf_pos(buf);
-    cj_mem_buf_write_u4(buf, /*attribute_length*/ 0);
-
-    switch (attr->type) {
-        case CJ_ATTR_NONE:
-            break;
-        case CJ_ATTR_AnnotationDefault:
-            break;
-        case CJ_ATTR_BootstrapMethods:
-            break;
-        case CJ_ATTR_Code:
-            break;
-        case CJ_ATTR_ConstantValue:
-            break;
-        case CJ_ATTR_Deprecated:
-            break;
-        case CJ_ATTR_EnclosingMethod:
-            break;
-        case CJ_ATTR_Exceptions:
-            break;
-        case CJ_ATTR_InnerClasses:
-            break;
-        case CJ_ATTR_LineNumberTable:
-            break;
-        case CJ_ATTR_LocalVariableTable:
-            break;
-        case CJ_ATTR_LocalVariableTypeTable:
-            break;
-        case CJ_ATTR_MethodParameters:
-            break;
-        case CJ_ATTR_Module:
-            break;
-        case CJ_ATTR_ModuleMainClass:
-            break;
-        case CJ_ATTR_ModulePackages:
-            break;
-        case CJ_ATTR_NestHost:
-            break;
-        case CJ_ATTR_NestMembers:
-            break;
-        case CJ_ATTR_RuntimeInvisibleParameterAnnotations:
-            break;
-        case CJ_ATTR_RuntimeInvisibleTypeAnnotations:
-            break;
-        case CJ_ATTR_RuntimeVisibleAnnotations:
-        case CJ_ATTR_RuntimeInvisibleAnnotations: {
-            //将当前attribute转换为一个annotation_group
-            cj_annotation_group_t *ag = priv(attr)->data;
-            cj_mem_buf_t *ann_buf =
-                    cj_annotation_group_to_buf(cls, ag, attr->type == CJ_ATTR_RuntimeVisibleAnnotations);
-            if (ann_buf == NULL) { //如果当前一个注解都没有，那么该属性也就没有意义了，直接返回空，删除该属性。
-                cj_mem_buf_free(buf);
-                return NULL;
-            }
-            cj_mem_buf_write_buf(buf, ann_buf);
-            attr_len += ann_buf->length;
-            cj_mem_buf_free(ann_buf);
-            break;
-        }
-        case CJ_ATTR_RuntimeVisibleParameterAnnotations:
-            break;
-        case CJ_ATTR_RuntimeVisibleTypeAnnotations:
-            break;
-        case CJ_ATTR_Signature:
-            break;
-        case CJ_ATTR_SourceDebugExtension:
-            break;
-        case CJ_ATTR_SourceFile:
-            break;
-        case CJ_ATTR_StackMapTable:
-            break;
-        case CJ_ATTR_Synthetic:
-            break;
-    }
-
-//    cj_mem_buf_flush(buf);
-
-    cj_mem_buf_pos_wu4(attr_len_pos, attr_len);
-//    cj_wu4(buf->data + 2, attr_len);
-    return buf;
-}
-
-cj_mem_buf_t *cj_attribute_group_to_buf(cj_class_t *cls, cj_attribute_group_t *group) {
-    if (cls == NULL || group == NULL) return NULL;
-    cj_mem_buf_t *buf = cj_mem_buf_new();
-    u2 attr_count = 0;
-
-    cj_mem_buf_write_u2(buf, attr_count);
-
-    for (int i = 0; i < group->count; ++i) {
-        cj_attribute_t *attribute = cj_attribute_group_get(cls, group, i);
-        if (attribute == NULL) continue;
-        cj_mem_buf_t *attr_buf = cj_attribute_to_buf(cls, attribute);
-        if (attr_buf != NULL) {
-            cj_mem_buf_write_buf(buf, attr_buf);
-            cj_mem_buf_free(attr_buf);
-            ++attr_count;
-        }
-    }
-
-    cj_mem_buf_flush(buf);
-    cj_wu2(buf->data, attr_count);
-
-    return buf;
-}
-
 CJ_INTERNAL void cj_attribute_group_free(cj_attribute_group_t *set) {
 
     if (set == NULL) return;
@@ -378,5 +247,129 @@ cj_attribute_t *cj_attribute_new(enum cj_attr_type type) {
     attr->length = 0;
     attr->priv = priv;
     return attr;
+}
+
+bool cj_attribute_group_write_buf(cj_class_t *cls, cj_attribute_group_t *group, cj_mem_buf_t *buf) {
+    if (cls == NULL || group == NULL || buf == NULL) return false;
+    u2 attr_count = 0;
+
+    cj_mem_buf_pos_t *attr_count_pos = cj_mem_buf_pos(buf);
+    cj_mem_buf_write_u2(buf, attr_count);
+
+    for (int i = 0; i < group->count; ++i) {
+        cj_attribute_t *attribute = cj_attribute_group_get(cls, group, i);
+        if (attribute == NULL) continue;
+        bool attr_st = cj_attribute_write_buf(cls, attribute, buf);
+        if (attr_st) {
+            ++attr_count;
+        } else {
+            //todo assert error
+        }
+    }
+
+    if (attr_count > 0) {
+        cj_mem_buf_pos_wu2(attr_count_pos, attr_count);
+    }
+
+    return true;
+}
+
+bool cj_attribute_write_buf(cj_class_t *cls, cj_attribute_t *attr, cj_mem_buf_t *buf) {
+    if (cls == NULL || attr == NULL || priv(attr) == NULL || buf == NULL) return false;
+
+    if (priv(attr)->dirty == CJ_DIRTY_CLEAN) { //untouched, just copy the original bytecodes
+        buf_ptr start = cj_class_get_buf_ptr(cls, priv(attr)->head);
+        cj_mem_buf_write_str(buf, (char *) start, attr->length + 6); //因为当前长度不包括前六个字节，在此补齐
+        cj_mem_buf_flush(buf);
+        return true;
+    }
+
+    /*
+       u2 attribute_name_index;
+       u4 attribute_length;
+       u2 num_annotations;
+       annotation annotations[num_annotations];
+    */
+    const char *type_str = cj_attr_type_to_str(attr->type);
+    u2 type_idx = 0;
+    cj_cp_put_str(cls, (const_str) type_str, strlen(type_str), &type_idx);
+
+    cj_mem_buf_write_u2(buf, type_idx);
+    cj_mem_buf_pos_t *attr_len_pos = cj_mem_buf_pos(buf);
+    cj_mem_buf_write_u4(buf, /*attribute_length*/ 0);
+    u4 attr_start = cj_mem_buf_get_size(buf);
+
+    switch (attr->type) {
+        case CJ_ATTR_NONE:
+            break;
+        case CJ_ATTR_AnnotationDefault:
+            break;
+        case CJ_ATTR_BootstrapMethods:
+            break;
+        case CJ_ATTR_Code:
+            break;
+        case CJ_ATTR_ConstantValue:
+            break;
+        case CJ_ATTR_Deprecated:
+            break;
+        case CJ_ATTR_EnclosingMethod:
+            break;
+        case CJ_ATTR_Exceptions:
+            break;
+        case CJ_ATTR_InnerClasses:
+            break;
+        case CJ_ATTR_LineNumberTable:
+            break;
+        case CJ_ATTR_LocalVariableTable:
+            break;
+        case CJ_ATTR_LocalVariableTypeTable:
+            break;
+        case CJ_ATTR_MethodParameters:
+            break;
+        case CJ_ATTR_Module:
+            break;
+        case CJ_ATTR_ModuleMainClass:
+            break;
+        case CJ_ATTR_ModulePackages:
+            break;
+        case CJ_ATTR_NestHost:
+            break;
+        case CJ_ATTR_NestMembers:
+            break;
+        case CJ_ATTR_RuntimeInvisibleParameterAnnotations:
+            break;
+        case CJ_ATTR_RuntimeInvisibleTypeAnnotations:
+            break;
+        case CJ_ATTR_RuntimeVisibleAnnotations:
+        case CJ_ATTR_RuntimeInvisibleAnnotations: {
+            //将当前attribute转换为一个annotation_group
+            cj_annotation_group_t *ag = priv(attr)->data;
+            bool ann_st = cj_annotation_group_write_buf(cls, ag, attr->type == CJ_ATTR_RuntimeVisibleAnnotations, buf);
+            if (!ann_st) { //如果当前一个注解都没有，那么该属性也就没有意义了，删除该属性。
+                cj_mem_buf_back(buf, 6);
+                return false;
+            }
+            break;
+        }
+        case CJ_ATTR_RuntimeVisibleParameterAnnotations:
+            break;
+        case CJ_ATTR_RuntimeVisibleTypeAnnotations:
+            break;
+        case CJ_ATTR_Signature:
+            break;
+        case CJ_ATTR_SourceDebugExtension:
+            break;
+        case CJ_ATTR_SourceFile:
+            break;
+        case CJ_ATTR_StackMapTable:
+            break;
+        case CJ_ATTR_Synthetic:
+            break;
+    }
+
+    u4 attr_end = cj_mem_buf_get_size(buf);
+    u4 attr_len = attr_end - attr_start;
+    cj_mem_buf_pos_wu4(attr_len_pos, attr_len);
+    return true;
 }
 

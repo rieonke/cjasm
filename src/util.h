@@ -155,38 +155,47 @@ enum cj_cp_type {
 
 #define cj_streq(str1, str2) (strcmp((char*)(str1), (char*)(str2)) == 0)
 
-#define cj_n2pow(v) \
-    v--;            \
+#define cj_str_replace(str, len, find, replace) \
+    {                                           \
+        for (int i = 0; i < len; ++i ) {        \
+            if (str[i] == (char)find) {         \
+                ((char*)str)[i] = replace;      \
+            }                                   \
+        }                                       \
+    }
+
+#define cj_n2pow(v)                                                                         \
+    v--;                                                                                    \
     for (size_t _cj_n2pow_i_ = 1; _cj_n2pow_i_ < sizeof(v) * CHAR_BIT; _cj_n2pow_i_ *= 2) { \
-        v |= v >> _cj_n2pow_i_;       \
-    }                  \
+        v |= v >> _cj_n2pow_i_;                                                             \
+    }                                                                                       \
     ++v
 
 /*todo 如果所加入的attr已经存在了，则获取现有的，impl cj_attribute_group_add_or_get */ \
-#define cj_annotation_group_init_or_create(comp, visible) \
-    if (!priv(comp)->annotation_set_initialized) { \
+#define cj_annotation_group_init_or_create(comp, visible)                                                           \
+    if (!priv(comp)->annotation_set_initialized) {                                                                  \
         priv(comp)->annotation_set_initialized = cj_annotation_group_init(comp->klass, priv(comp)->attribute_group, \
-                                                                      &priv(comp)->annotation_group); \
-    } \
-    if (priv(comp)->attribute_group == NULL) {  \
-        cj_attribute_group_t *group = cj_attribute_group_new(0, NULL, NULL); \
-        priv(comp)->attribute_group = group; \
-    } \
-    if (priv(comp)->annotation_group == NULL) { \
-        cj_annotation_group_t *ann_group = cj_annotation_group_create(0); \
-        priv(comp)->annotation_group = ann_group; \
-    } \
-    if (visible && priv(comp)->annotation_group->vi_attr == NULL  ) {  \
-        cj_attribute_t *attribute = cj_attribute_new(CJ_ATTR_RuntimeVisibleAnnotations);\
-        priv(comp)->annotation_group->vi_attr = attribute; \
-        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group, attribute);                                      \
-        cj_attribute_set_data(attribute, priv(comp)->annotation_group); \
-    } \
-    if (!visible &&  priv(comp)->annotation_group->in_attr == NULL) { \
-        cj_attribute_t *attribute = cj_attribute_new(CJ_ATTR_RuntimeInvisibleAnnotations);\
-        priv(comp)->annotation_group->in_attr = attribute; \
-        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group, attribute);                                      \
-        cj_attribute_set_data(attribute, priv(comp)->annotation_group); \
+                                                                      &priv(comp)->annotation_group);               \
+    }                                                                                                               \
+    if (priv(comp)->attribute_group == NULL) {                                                                      \
+        cj_attribute_group_t *group = cj_attribute_group_new(0, NULL, NULL);                                        \
+        priv(comp)->attribute_group = group;                                                                        \
+    }                                                                                                               \
+    if (priv(comp)->annotation_group == NULL) {                                                                     \
+        cj_annotation_group_t *ann_group = cj_annotation_group_create(0);                                           \
+        priv(comp)->annotation_group = ann_group;                                                                   \
+    }                                                                                                               \
+    if (visible && priv(comp)->annotation_group->vi_attr == NULL  ) {                                               \
+        cj_attribute_t *attribute = cj_attribute_new(CJ_ATTR_RuntimeVisibleAnnotations);                            \
+        priv(comp)->annotation_group->vi_attr = attribute;                                                          \
+        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group, attribute);                                \
+        cj_attribute_set_data(attribute, priv(comp)->annotation_group);                                             \
+    }                                                                                                               \
+    if (!visible &&  priv(comp)->annotation_group->in_attr == NULL) {                                               \
+        cj_attribute_t *attribute = cj_attribute_new(CJ_ATTR_RuntimeInvisibleAnnotations);                          \
+        priv(comp)->annotation_group->in_attr = attribute;                                                          \
+        cj_attribute_group_add(comp->klass, priv(comp)->attribute_group, attribute);                                \
+        cj_attribute_set_data(attribute, priv(comp)->annotation_group);                                             \
     }
 
 

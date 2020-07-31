@@ -158,8 +158,9 @@ void test_descriptor_parse(void **state) {
     assert_non_null(descriptor);
 
     for (int i = 0; i < descriptor->parameter_count; ++i) {
-        printf("%s\n", descriptor->parameter_types[i]);
-        cj_sfree(descriptor->parameter_types[i]);
+        cj_type_t *type = descriptor->parameter_types[i];
+        printf("%s\n", type->name);
+        cj_sfree(type);
     }
     cj_sfree(descriptor->parameter_types);
     cj_sfree(descriptor->type);

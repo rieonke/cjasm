@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "util.h"
 #include "mem_buf.h"
 
@@ -199,4 +200,25 @@ void cj_mem_buf_back(cj_mem_buf_t *buf, u4 count) {
         buf->length -= count;
     }
 
+}
+
+
+void cj_mem_buf_printf1(cj_mem_buf_t *buf, const char *format, ...) {
+
+    va_list ap;
+    va_list ap1;
+
+    va_start(ap, format);
+
+    va_copy(ap1, ap);
+//    size_t size = sprintf(NULL, ap1);
+    size_t size = vsnprintf(NULL, 0, format, ap1) + 1;
+    va_end(ap1);
+
+    char *buffer = malloc(size);
+    vsnprintf(buffer, size, format, ap);
+
+    cj_mem_buf_write_str(buf, buffer, strlen(buffer)
+    );
+    free(buffer);
 }

@@ -1360,7 +1360,7 @@ cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method) {
     return priv(method)->descriptor;
 }
 
-const_str cj_method_get_return_type(cj_method_t *method) {
+cj_type_t* cj_method_get_return_type(cj_method_t *method) {
     cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
     return descriptor->type;
 }

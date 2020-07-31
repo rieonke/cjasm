@@ -5,6 +5,7 @@
 #ifndef CJASM_METHOD_H
 #define CJASM_METHOD_H
 
+#include "descriptor.h"
 #include "util.h"
 
 typedef struct cj_method_group_s cj_method_group_t;
@@ -84,7 +85,7 @@ u2 cj_method_get_parameter_count(cj_method_t *method);
  * @param method 方法
  * @return 返回值类型
  */
-const_str cj_method_get_return_type(cj_method_t *method);
+cj_type_t *cj_method_get_return_type(cj_method_t *method);
 
 /**
  * 获取方法描述符.

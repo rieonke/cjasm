@@ -30,7 +30,6 @@ typedef struct cj_annotation_s cj_annotation_t;
 typedef struct cj_element_pair_s cj_element_pair_t;
 typedef struct cj_element_s cj_element_t;
 typedef struct cj_code_s cj_code_t;
-typedef struct cj_descriptor_s cj_descriptor_t;
 
 //@formatter:off
 /*
@@ -382,14 +381,6 @@ struct cj_attribute_s {
     const_str type_name;
     enum cj_attr_type type;
     cj_pointer priv;
-};
-
-struct cj_descriptor_s {
-    bool is_field;
-    bool is_method;
-    int parameter_count;
-    unsigned char **parameter_types;
-    unsigned char *type;
 };
 
 struct cj_element_pair_s {

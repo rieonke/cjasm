@@ -6,10 +6,10 @@
 
 CJ_INTERNAL void cj_descriptor_free(cj_descriptor_t *desc) {
     for (int i = 0; i < desc->parameter_count; ++i) {
-        cj_sfree(desc->parameter_types[i]);
+        cj_type_free(desc->parameter_types[i]);
     }
     cj_sfree(desc->parameter_types);
-    cj_sfree(desc->type);
+    cj_type_free(desc->type);
     cj_sfree(desc);
 }
 
@@ -98,7 +98,7 @@ CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
 
     char *type = NULL;
 
-    const char *types[256] = {0};
+    char *types[256] = {0};
     int types_len = 0;
 
     for (int i = 0; i < len; ++i) {
@@ -165,9 +165,19 @@ CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
     }
 
     descriptor = malloc(sizeof(cj_descriptor_t));
-    descriptor->type = (unsigned char *) type;
-    descriptor->parameter_types = malloc(sizeof(char *) * types_len);
-    memcpy(descriptor->parameter_types, types, sizeof(char *) * types_len);
+    descriptor->type = cj_type_parse(type);
+    free(type);
+
+    if (types_len > 0) {
+        descriptor->parameter_types = malloc(sizeof(char *) * types_len);
+        for (int i = 0; i < types_len; ++i) {
+            descriptor->parameter_types[i] = cj_type_parse(types[i]);
+            free(types[i]);
+        }
+    } else {
+        descriptor->parameter_types = NULL;
+    }
+
     descriptor->parameter_count = types_len;
     descriptor->is_method = is_method;
 
@@ -186,10 +196,10 @@ unsigned char *cj_descriptor_to_string(cj_descriptor_t *desc) {
     if (desc->is_method) {
         DESC_METHOD_START
         for (int i = 0; i < desc->parameter_count; ++i) {
-            unsigned char *type = desc->parameter_types[i];
+            cj_type_t *type = desc->parameter_types[i];
             bool need_free = false;
             int len = 0;
-            const char *res = cj_descriptor_type_to_str(type, &len, &need_free);
+            const char *res = cj_descriptor_type_to_str((unsigned char *) type->raw_name, &len, &need_free);
             memcpy(buf + buf_pos, res, len);
             buf_pos += len;
             if (need_free) {
@@ -201,7 +211,7 @@ unsigned char *cj_descriptor_to_string(cj_descriptor_t *desc) {
 
     bool need_free = false;
     int len = 0;
-    const char *res = cj_descriptor_type_to_str(desc->type, &len, &need_free);
+    const char *res = cj_descriptor_type_to_str((unsigned char *) desc->type->raw_name, &len, &need_free);
     memcpy(buf + buf_pos, res, len);
     buf_pos += len;
     cj_sfree((char *) res);
@@ -214,4 +224,67 @@ unsigned char *cj_descriptor_to_string(cj_descriptor_t *desc) {
     return out_str;
 }
 
+cj_type_t *cj_type_parse(const char *str) {
+
+    cj_type_t *type = malloc(sizeof(cj_type_t));
+
+    type->raw_name = strdup(str);
+    type->name = strdup(type->raw_name);
+    cj_str_replace(type->name, strlen(type->name), '/', '.');
+
+    char *short_name = strrchr(type->raw_name, '/');
+    type->simple_name = short_name ? short_name + 1 : type->raw_name;
+    int package_len = (int) (type->simple_name - type->raw_name) - 1;
+    type->package = strndup(type->name, package_len);
+    type->raw_package = strdup(type->package);
+
+    if (package_len > 0) {
+        cj_str_replace(type->raw_package, package_len, '.', '/');
+    }
+    type->is_primitive = cj_type_is_primitive(str);
+
+    return type;
+}
+
+void cj_type_free(cj_type_t *type) {
+    if (type == NULL) return;
+    cj_sfree(type->raw_name);
+    cj_sfree(type->name);
+    cj_sfree(type->package);
+    cj_sfree(type->raw_package);
+    cj_sfree(type);
+}
+
+bool cj_type_is_primitive(const char *str) {
+    if (strlen(str) > 7)return false;
+
+    if (cj_streq("int", str)) {
+        return true;
+    }
+    if (cj_streq("byte", str)) {
+        return true;
+    }
+    if (cj_streq("char", str)) {
+        return true;
+    }
+    if (cj_streq("long", str)) {
+        return true;
+    }
+    if (cj_streq("void", str)) {
+        return true;
+    }
+    if (cj_streq("short", str)) {
+        return true;
+    }
+    if (cj_streq("float", str)) {
+        return true;
+    }
+    if (cj_streq("double", str)) {
+        return true;
+    }
+    if (cj_streq("boolean", str)) {
+        return true;
+    }
+    return false;
+}
 

@@ -42,15 +42,6 @@ struct cj_class_priv_s {
 };
 #define priv(c) ((cj_class_priv_t*)(c->priv))
 
-#define cj_str_replace(str, len, find, replace) \
-    {                                           \
-        for (int i = 0; i < len; ++i ) {        \
-            if (str[i] == (char)find) {         \
-                ((char*)str)[i] = replace;      \
-            }                                   \
-        }                                       \
-    }
-
 /**
  * 设置class、field、method、attribute的偏移量offset
  * @param ctx java类
@@ -206,19 +197,23 @@ const_str cj_descriptor_replace_type(const_str descriptor, const_str old_element
                                      const_str new_element, bool *touched) {
     cj_descriptor_t *desc = cj_descriptor_parse(descriptor, strlen((char *) descriptor));
 
+    //todo 优化此段的效率，替换descriptor 可以不用parse每一个type
+
     *touched = false;
     for (int i = 0; i < desc->parameter_count; ++i) {
-        unsigned char *str = desc->parameter_types[i];
-        if (cj_streq(str, old_element)) {
-            free(str);
-            desc->parameter_types[i] = (unsigned char *) strdup((char *) new_element);
+        cj_type_t *type = desc->parameter_types[i];
+        if (cj_streq(type->raw_name, old_element)) {
+            cj_type_free(type);
+            desc->parameter_types[i] = cj_type_parse((char *) new_element);
+//                    (unsigned char *) strdup((char *) new_element);
             if (!*touched) *touched = true;
         }
     }
 
-    if (cj_streq(desc->type, old_element)) {
-        free(desc->type);
-        desc->type = (unsigned char *) strdup((char *) new_element);
+    if (cj_streq(desc->type->raw_name, old_element)) {
+        cj_type_free(desc->type);
+        desc->type = cj_type_parse((char *) new_element);
+//                (unsigned char *) strdup((char *) new_element);
         if (!*touched) *touched = true;
     }
 

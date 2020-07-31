@@ -68,5 +68,14 @@ u4 cj_mem_buf_get_size(cj_mem_buf_t *buf);
 
 void cj_mem_buf_back(cj_mem_buf_t *buf, u4 count);
 
+#define cj_mem_buf_printf(buf, ...)                                            \
+    {                                                                          \
+        size_t __cj_mem_buf_p_size = snprintf(NULL,0, __VA_ARGS__) + 1;        \
+        char * __cj_mem_buf_p_b = malloc(__cj_mem_buf_p_size);                 \
+        snprintf(__cj_mem_buf_p_b, __cj_mem_buf_p_size, __VA_ARGS__);          \
+        cj_mem_buf_write_str(buf, __cj_mem_buf_p_b, strlen(__cj_mem_buf_p_b)); \
+        free(__cj_mem_buf_p_b);                                                \
+    }
+
 
 #endif //CJASM_MEM_BUF_H

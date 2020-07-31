@@ -56,4 +56,5 @@ enable_testing()
 cjasm_add_ctest(load_bytecode)
 cjasm_add_ctest(simple_decompiler io/ticup/example/Test.class)
 cjasm_add_ctest(write_bytecode)
+cjasm_add_ctest(mem_buf_rw)
 

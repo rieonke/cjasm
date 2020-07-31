@@ -3,6 +3,7 @@
 //
 
 #include <limits.h>
+#include <assert.h>
 #include "util.h"
 #include "field.h"
 #include "hashmap.h"
@@ -152,65 +153,6 @@ CJ_INTERNAL void cj_field_set_free(cj_field_group_t *set) {
     hashmap_destroy(set->map);
     cj_sfree(set->map);
     cj_sfree(set);
-}
-
-cj_mem_buf_t *cj_field_to_buf(cj_field_t *field) {
-    if (field == NULL || priv(field) == NULL) return NULL;
-
-    if (priv(field)->dirty & CJ_DIRTY_REMOVE) { //已被删除
-        return NULL;
-    }
-
-    cj_mem_buf_t *buf = NULL;
-
-    if (priv(field)->dirty == CJ_DIRTY_CLEAN) {
-        u4 head = priv(field)->head;
-        u4 tail = priv(field)->tail;
-        if (head >= tail) {
-            return NULL;
-        }
-
-        buf_ptr buf_ptr = cj_class_get_buf_ptr(field->klass, 0);
-
-        buf = cj_mem_buf_new();
-        cj_mem_buf_write_str(buf, (char *) buf_ptr + head, tail - head);
-        return buf;
-    }
-    /*
-     field_info {
-        u2             access_flags;
-        u2             name_index;
-        u2             descriptor_index;
-        u2             attributes_count;
-        attribute_info attributes[attributes_count];
-     }
-     */
-
-    if (priv(field)->dirty != CJ_DIRTY_CLEAN) {
-        buf = cj_mem_buf_new();
-        cj_mem_buf_write_u2(buf, field->access_flags);
-        u2 name_idx = 0;
-        u2 descriptor_idx = 0;
-
-        cj_cp_put_str(field->klass, field->name, strlen((char *) field->name), &name_idx);
-        cj_cp_put_str(field->klass, field->descriptor, strlen((char *) field->descriptor), &descriptor_idx);
-
-        cj_mem_buf_write_u2(buf, name_idx);
-        cj_mem_buf_write_u2(buf, descriptor_idx);
-
-        cj_attribute_group_t *attr_group = cj_field_get_attribute_group(field);
-        cj_mem_buf_t *attr_buf = cj_attribute_group_to_buf(field->klass, attr_group);
-        if (attr_buf == NULL) {
-            cj_mem_buf_write_u2(buf, 0);
-        } else {
-            cj_mem_buf_write_buf(buf, attr_buf);
-        }
-        cj_mem_buf_free(attr_buf);
-
-    }
-
-    if (buf != NULL) cj_mem_buf_flush(buf);
-    return buf;
 }
 
 CJ_INTERNAL void cj_field_free(cj_field_t *field) {
@@ -368,4 +310,53 @@ bool cj_field_remove_annotation(cj_field_t *field, u2 index) {
         cj_field_mark_dirty(field, CJ_DIRTY_ATTR);
     }
     return false;
+}
+
+bool cj_field_write_buf(cj_field_t *field, cj_mem_buf_t *buf) {
+    if (field == NULL || priv(field) == NULL) return false;
+
+    /*
+     field_info {
+        u2             access_flags;
+        u2             name_index;
+        u2             descriptor_index;
+        u2             attributes_count;
+        attribute_info attributes[attributes_count];
+     }
+     */
+
+    if (priv(field)->dirty & CJ_DIRTY_REMOVE) { //已被删除
+        return false;
+    } else if (priv(field)->dirty == CJ_DIRTY_CLEAN) {
+        u4 head = priv(field)->head;
+        u4 tail = priv(field)->tail;
+        if (head >= tail) {
+            return false;
+        }
+
+        buf_ptr buf_ptr = cj_class_get_buf_ptr(field->klass, 0);
+        cj_mem_buf_write_str(buf, (char *) buf_ptr + head, tail - head);
+    } else if (priv(field)->dirty != CJ_DIRTY_CLEAN) {
+        cj_mem_buf_write_u2(buf, field->access_flags);
+        u2 name_idx = 0;
+        u2 descriptor_idx = 0;
+
+        cj_cp_put_str(field->klass, field->name, strlen((char *) field->name), &name_idx);
+        cj_cp_put_str(field->klass, field->descriptor, strlen((char *) field->descriptor), &descriptor_idx);
+
+        cj_mem_buf_write_u2(buf, name_idx);
+        cj_mem_buf_write_u2(buf, descriptor_idx);
+
+        cj_attribute_group_t *attr_group = cj_field_get_attribute_group(field);
+        if (attr_group == NULL) {
+            cj_mem_buf_write_u2(buf, 0);
+        } else {
+            bool attr_st = cj_attribute_group_write_buf(field->klass, attr_group, buf);
+            if (!attr_st) {
+                cj_debug("field %s does not have any attributes\n", field->name);
+            }
+        }
+    }
+
+    return true;
 }

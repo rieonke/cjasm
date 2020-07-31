@@ -62,7 +62,11 @@ cj_mem_buf_pos_t *cj_mem_buf_pos(cj_mem_buf_t *buf);
 
 void cj_mem_buf_pos_wu4(cj_mem_buf_pos_t *pos, u4 data);
 
-void cj_mem_buf_pos_wu2(cj_mem_buf_pos_t* pos, u2 data);
+void cj_mem_buf_pos_wu2(cj_mem_buf_pos_t *pos, u2 data);
+
+u4 cj_mem_buf_get_size(cj_mem_buf_t *buf);
+
+void cj_mem_buf_back(cj_mem_buf_t *buf, u4 count);
 
 
 #endif //CJASM_MEM_BUF_H

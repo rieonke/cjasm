@@ -1370,27 +1370,26 @@ u2 cj_method_get_parameter_count(cj_method_t *method) {
     return descriptor->parameter_count;
 }
 
-cj_mem_buf_t *cj_method_to_buf(cj_method_t *method) {
-    if (method == NULL || method->klass == NULL || priv(method) == NULL) return NULL;
+bool cj_method_write_buf(cj_method_t *method, cj_mem_buf_t *buf) {
+    if (method == NULL || method->klass == NULL || priv(method) == NULL) return false;
 
     if (priv(method)->dirty & CJ_DIRTY_REMOVE) {
-        return NULL;
+        return false;
     }
 
-    cj_mem_buf_t *buf = cj_mem_buf_new();
     if (priv(method)->dirty == CJ_DIRTY_CLEAN) {
 
         cj_debug("untouched method: %s\n", method->name);
         u4 head = priv(method)->head;
         u4 tail = priv(method)->tail;
         if (head >= tail) {
-            return NULL;
+            return false;
         }
 
         buf_ptr buf_ptr = cj_class_get_buf_ptr(method->klass, 0);
 
         cj_mem_buf_write_str(buf, (char *) buf_ptr + head, tail - head);
-        return buf;
+        return true;
     }
 
     /*
@@ -1415,12 +1414,11 @@ cj_mem_buf_t *cj_method_to_buf(cj_method_t *method) {
     if (priv(method)->attribute_group == NULL) {
         cj_mem_buf_write_u2(buf, /*attribute_count*/ 0);
     } else {
-        cj_mem_buf_t *attr_buf = cj_attribute_group_to_buf(method->klass, priv(method)->attribute_group);
-        cj_mem_buf_write_buf(buf, attr_buf);
-        cj_mem_buf_free(attr_buf);
+        bool attr_buf = cj_attribute_group_write_buf(method->klass, priv(method)->attribute_group, buf);
+        assert(attr_buf == true); //todo error
     }
 
-    return buf;
+    return true;
 }
 
 cj_method_group_t *cj_method_group_new(u2 count, u4 *heads, u4 *tails) {
@@ -1438,31 +1436,22 @@ cj_method_group_t *cj_method_group_new(u2 count, u4 *heads, u4 *tails) {
     return group;
 }
 
-cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group) {
+bool cj_method_group_write_buf(cj_class_t *cls, cj_method_group_t *group, cj_mem_buf_t *buf) {
     if (cls == NULL || group == NULL) return NULL;
 
-    cj_mem_buf_t *buf = cj_mem_buf_new();
     cj_mem_buf_pos_t *method_count_pos = cj_mem_buf_pos(buf);
     cj_mem_buf_write_u2(buf, 0);
 
     u2 count = 0;
     for (int i = 0; i < group->count; ++i) {
         cj_method_t *method = cj_method_group_get(cls, group, i);
-        cj_mem_buf_t *m_buf = cj_method_to_buf(method);
-        if (m_buf == NULL) continue;
-        cj_mem_buf_write_buf(buf, m_buf);
-        cj_mem_buf_free(m_buf);
+        bool m_buf = cj_method_write_buf(method, buf);
+        if (m_buf == false) continue;
         ++count;
     }
 
-    if (count == 0) {
-        cj_mem_buf_free(buf);
-        return NULL;
-    }
-
-    cj_mem_buf_pos_wu2(method_count_pos, count);
-//    cj_mem_buf_flush(buf);
-//    cj_wu2(buf->data, count);
+    if (count > 0)
+        cj_mem_buf_pos_wu2(method_count_pos, count);
     return buf;
 }
 

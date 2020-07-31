@@ -146,13 +146,8 @@ cj_mem_buf_pos_t *cj_mem_buf_pos(cj_mem_buf_t *buf) {
     cj_mem_buf_pos_t *pos = malloc(sizeof(cj_mem_buf_pos_t));
     pos->buf = buf;
 
-    if (buf->data != NULL && buf->length > 0) {
-        pos->loc = 1;
-        pos->pos = buf->length;
-    } else {
-        pos->loc = 0;
-        pos->pos = buf->pos > 0 ? buf->pos : 0;
-    }
+    pos->loc = 0;
+    pos->pos = buf->pos;
 
     if (buf->positions == NULL) {
         buf->positions = malloc(sizeof(cj_mem_buf_pos_t *) * ++buf->positions_count);
@@ -184,4 +179,24 @@ void cj_mem_buf_pos_wu2(cj_mem_buf_pos_t *pos, u2 data) {
     } else {
         cj_wu2(buf->data + pos->pos, data);
     }
+}
+
+u4 cj_mem_buf_get_size(cj_mem_buf_t *buf) {
+    if (buf == NULL) return 0;
+    return buf->pos + buf->length;
+}
+
+void cj_mem_buf_back(cj_mem_buf_t *buf, u4 count) {
+    if (buf == NULL || count == 0) return;
+    if (buf->pos >= count) {
+        buf->pos -= count;
+        return;
+    }
+
+    count -= buf->pos;
+    buf->pos = 0;
+    if (count > 0) {
+        buf->length -= count;
+    }
+
 }

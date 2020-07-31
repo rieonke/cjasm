@@ -42,6 +42,10 @@ CJ_INTERNAL cj_annotation_t *cj_annotation_parse(cj_class_t *ctx, buf_ptr attr_p
 
 CJ_INTERNAL cj_element_t *cj_annotation_parse_element_value(cj_class_t *ctx, buf_ptr ev_ptr, u4 *out_offset);
 
+bool cj_annotation_group_write_buf(cj_class_t *cls, cj_annotation_group_t *group, bool visible, cj_mem_buf_t *buf);
+
+bool cj_annotation_write_buf(cj_class_t *cls, cj_annotation_t *ann, cj_mem_buf_t *buf);
+
 CJ_INTERNAL void cj_annotation_free(cj_annotation_t *ann);
 
 CJ_INTERNAL bool cj_annotation_group_init(cj_class_t *ctx, cj_attribute_group_t *attr_set, cj_annotation_group_t **set);
@@ -51,9 +55,5 @@ bool cj_annotation_group_remove(cj_class_t *cls, cj_annotation_group_t *group, u
 CJ_INTERNAL cj_annotation_t *cj_annotation_group_get(cj_class_t *ctx, cj_annotation_group_t *set, u2 idx);
 
 CJ_INTERNAL void cj_annotation_group_free(cj_annotation_group_t *set);
-
-cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t *group, bool visible);
-
-cj_mem_buf_t *cj_annotation_to_buf(cj_class_t *cls, cj_annotation_t *ann);
 
 #endif //CJASM_ANNOTATION_H

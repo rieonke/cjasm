@@ -17,6 +17,7 @@
 #define TEST_CLASS "io/ticup/example/Test.class"
 #define MAJOR_VERSION 52
 #define MINOR_VERSION 0
+#define CHECK_BEFORE_WRITE true
 
 #define CTX ((cj_class_t*)*state)
 #define NEW_CLASS_NAME  "Test1"
@@ -78,8 +79,6 @@ void test_check_write(void **state) {
                     cj_field_remove_annotation(field, j);
                 }
             }
-
-
             cj_field_add_annotation(field, ann);
         }
     }
@@ -89,8 +88,6 @@ void test_check_write(void **state) {
     cj_annotation_t *num_ann = cj_annotation_new((const_str) "Lcom/example/Inject;", true);
     cj_annotation_add_kv(num_ann, (const_str) "hello", (const_str) "world");
     cj_field_add_annotation(num_field, num_ann);
-
-
 
     bool method_removed = false;
 
@@ -114,10 +111,13 @@ void test_check_write(void **state) {
     cj_class_add_field(CTX, field);
     original_field_count++;
 
-
-    cj_mem_buf_t *out = cj_class_to_buf(CTX);
+    cj_mem_buf_t *out = cj_mem_buf_new();
+    bool write_st = cj_class_write_buf(CTX, out);
+    assert_true(write_st);
+//    cj_mem_buf_t *out = cj_class_to_buf(CTX);
     size_t len = out->length;
 
+#if CHECK_BEFORE_WRITE
     cj_class_t *cls = cj_class_new(out->data, out->length);
     assert_int_equal(original_field_count, cls->field_count);
     assert_string_equal(NEW_CLASS_NAME, cj_class_get_name(cls));
@@ -132,6 +132,7 @@ void test_check_write(void **state) {
     }
 
     assert_true(rename_found);
+#endif
 
 
     FILE *f = fopen("Test1.class", "wb");
@@ -140,8 +141,10 @@ void test_check_write(void **state) {
 
     cj_mem_buf_free(out);
 
+#if CHECK_BEFORE_WRITE
     assert_non_null(cls->name != NULL);
     cj_class_free(cls);
+#endif
 }
 
 int main(void) {

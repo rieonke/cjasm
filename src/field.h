@@ -141,7 +141,7 @@ cj_field_t *cj_field_group_get_by_name(cj_class_t *ctx, cj_field_group_t *set, c
 
 cj_field_t *cj_field_group_get(cj_class_t *ctx, cj_field_group_t *set, u2 idx);
 
-cj_mem_buf_t *cj_field_to_buf(cj_field_t *field);
+bool cj_field_write_buf(cj_field_t *field, cj_mem_buf_t *buf);
 
 void cj_field_set_free(cj_field_group_t *set);
 

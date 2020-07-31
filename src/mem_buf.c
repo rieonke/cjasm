@@ -12,6 +12,8 @@ cj_mem_buf_t *cj_mem_buf_new() {
     buf->data = NULL;
     buf->pos = 0;
     buf->length = 0;
+    buf->positions = NULL;
+    buf->positions_count = 0;
     return buf;
 }
 
@@ -23,9 +25,19 @@ void cj_mem_buf_flush(cj_mem_buf_t *buf) {
         buf->data = realloc(buf->data, sizeof(char) * (buf->length + buf->pos));
     }
 
+    for (int i = 0; i < buf->positions_count; ++i) {
+        cj_mem_buf_pos_t *pos = buf->positions[i];
+        if (pos == NULL) continue;
+        if (pos->loc == 0) {
+            pos->loc = 1;
+            pos->pos += buf->length;
+        }
+    }
+
     memcpy(buf->data + buf->length, buf->buf, buf->pos);
     buf->length += buf->pos;
     buf->pos = 0;
+
 }
 
 void cj_mem_buf_check_full(cj_mem_buf_t *buf, u4 nlen) {
@@ -120,6 +132,56 @@ void cj_mem_buf_write_buf(cj_mem_buf_t *buf, cj_mem_buf_t *buf1) {
 
 void cj_mem_buf_free(cj_mem_buf_t *buf) {
     if (buf == NULL) return;
+    for (int i = 0; i < buf->positions_count; ++i) {
+        cj_mem_buf_pos_t *pos = buf->positions[i];
+        cj_sfree(pos);
+    }
+    cj_sfree(buf->positions);
     cj_sfree(buf->data);
     cj_sfree(buf);
+}
+
+cj_mem_buf_pos_t *cj_mem_buf_pos(cj_mem_buf_t *buf) {
+    if (buf == NULL) return NULL;
+    cj_mem_buf_pos_t *pos = malloc(sizeof(cj_mem_buf_pos_t));
+    pos->buf = buf;
+
+    if (buf->data != NULL && buf->length > 0) {
+        pos->loc = 1;
+        pos->pos = buf->length;
+    } else {
+        pos->loc = 0;
+        pos->pos = buf->pos > 0 ? buf->pos : 0;
+    }
+
+    if (buf->positions == NULL) {
+        buf->positions = malloc(sizeof(cj_mem_buf_pos_t *) * ++buf->positions_count);
+    } else {
+        buf->positions = realloc(buf->positions, sizeof(cj_mem_buf_pos_t *) * ++buf->positions_count);
+    }
+    buf->positions[buf->positions_count - 1] = pos;
+
+    return pos;
+}
+
+void cj_mem_buf_pos_wu4(cj_mem_buf_pos_t *pos, u4 data) {
+
+    if (pos == NULL || pos->buf == NULL) return;
+    cj_mem_buf_t *buf = pos->buf; //todo 目前仅支持在pos后，手动插入placeholder，不支持在末尾插入
+    if (pos->loc == 0) {
+        cj_wu4(buf->buf + pos->pos, data);
+    } else {
+        cj_wu4(buf->data + pos->pos, data);
+    }
+}
+
+void cj_mem_buf_pos_wu2(cj_mem_buf_pos_t *pos, u2 data) {
+
+    if (pos == NULL || pos->buf == NULL) return;
+    cj_mem_buf_t *buf = pos->buf; //todo 目前仅支持在pos后，手动插入placeholder，不支持在末尾插入
+    if (pos->loc == 0) {
+        cj_wu2(buf->buf + pos->pos, data);
+    } else {
+        cj_wu2(buf->data + pos->pos, data);
+    }
 }

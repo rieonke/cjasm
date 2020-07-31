@@ -1442,6 +1442,7 @@ cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group) 
     if (cls == NULL || group == NULL) return NULL;
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
+    cj_mem_buf_pos_t *method_count_pos = cj_mem_buf_pos(buf);
     cj_mem_buf_write_u2(buf, 0);
 
     u2 count = 0;
@@ -1459,8 +1460,9 @@ cj_mem_buf_t *cj_method_group_to_buf(cj_class_t *cls, cj_method_group_t *group) 
         return NULL;
     }
 
-    cj_mem_buf_flush(buf);
-    cj_wu2(buf->data, count);
+    cj_mem_buf_pos_wu2(method_count_pos, count);
+//    cj_mem_buf_flush(buf);
+//    cj_wu2(buf->data, count);
     return buf;
 }
 

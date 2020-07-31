@@ -380,7 +380,7 @@ cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t 
     if (cls == NULL || group == NULL) return NULL;
 
     cj_mem_buf_t *buf = cj_mem_buf_new();
-
+    cj_mem_buf_pos_t *ann_count_pos = cj_mem_buf_pos(buf);
     cj_mem_buf_write_u2(buf, /*annotations count*/0);
     u2 ann_count = 0;
     for (int i = 0; i < group->count; ++i) {
@@ -400,8 +400,8 @@ cj_mem_buf_t *cj_annotation_group_to_buf(cj_class_t *cls, cj_annotation_group_t 
         return NULL;
     }
 
-    cj_mem_buf_flush(buf);
-    cj_wu2(buf->data, ann_count);
+//    cj_mem_buf_flush(buf);
+    cj_mem_buf_pos_wu2(ann_count_pos, ann_count);
     return buf;
 }
 

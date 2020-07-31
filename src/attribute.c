@@ -108,6 +108,7 @@ cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr) {
 
     u4 attr_len = 0;
     cj_mem_buf_write_u2(buf, type_idx);
+    cj_mem_buf_pos_t *attr_len_pos = cj_mem_buf_pos(buf);
     cj_mem_buf_write_u4(buf, /*attribute_length*/ 0);
 
     switch (attr->type) {
@@ -182,8 +183,10 @@ cj_mem_buf_t *cj_attribute_to_buf(cj_class_t *cls, cj_attribute_t *attr) {
             break;
     }
 
-    cj_mem_buf_flush(buf);
-    cj_wu4(buf->data + 2, attr_len);
+//    cj_mem_buf_flush(buf);
+
+    cj_mem_buf_pos_wu4(attr_len_pos, attr_len);
+//    cj_wu4(buf->data + 2, attr_len);
     return buf;
 }
 

@@ -53,6 +53,7 @@ cj_mem_buf_t *cj_cp_to_buf2(cj_class_t *ctx) {
 
     u2 *copied_indexes = calloc(cpool->entries_len, sizeof(u2));
 
+    cj_mem_buf_pos_t *cp_count_pos = cj_mem_buf_pos(buf);
     cj_mem_buf_write_u2(buf, 0);
 
 #undef move
@@ -138,9 +139,10 @@ cj_mem_buf_t *cj_cp_to_buf2(cj_class_t *ctx) {
     }
 
     free(copied_indexes);
-    cj_mem_buf_flush(buf);
+//    cj_mem_buf_flush(buf);
 
-    cj_wu2(buf->data, cpool_len);
+    cj_mem_buf_pos_wu2(cp_count_pos, cpool_len);
+//    cj_wu2(buf->data, cpool_len);
 
     return buf;
 }

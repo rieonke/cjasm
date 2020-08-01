@@ -11,7 +11,9 @@
 #include "../src/util.h"
 #include "../src/descriptor.h"
 #include "../src/class.h"
+#include "../src/attribute.h"
 #include "../src/method.h"
+#include "../src/annotation.h"
 #include "../src/cpool.h"
 #include "../src/field.h"
 

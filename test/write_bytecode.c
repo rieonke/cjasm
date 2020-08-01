@@ -10,6 +10,9 @@
 #include "../src/class.h"
 #include "../src/field.h"
 #include "../src/method.h"
+#include "../src/util.h"
+#include "../src/annotation.h"
+#include "../src/mem_buf.h"
 #include <setjmp.h>
 #include <cmocka.h>
 

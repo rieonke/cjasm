@@ -5,10 +5,7 @@
 #ifndef CJASM_DESCRIPTOR_H
 #define CJASM_DESCRIPTOR_H
 
-#include "util.h"
-
-typedef struct cj_type_s cj_type_t;
-typedef struct cj_descriptor_s cj_descriptor_t;
+#include "def.h"
 
 struct cj_descriptor_s {
     bool is_field;

@@ -3,6 +3,7 @@
 //
 
 #include "descriptor.h"
+#include "util.h"
 
 CJ_INTERNAL void cj_descriptor_free(cj_descriptor_t *desc) {
     for (int i = 0; i < desc->parameter_count; ++i) {

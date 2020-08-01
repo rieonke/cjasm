@@ -11,6 +11,8 @@
 #include "annotation.h"
 #include "method.h"
 #include "attribute.h"
+#include "mem_buf.h"
+#include "code.h"
 
 #define priv(m) ((cj_method_priv_t*)(m->priv))
 
@@ -682,7 +684,7 @@ CJ_INTERNAL cj_insn_t *cj_code_iter_next(cj_code_iter_t *iter) {
 
     cj_code_t *code = iter->code;
     cj_class_t *ctx = code->method->klass;
-    u4 offset = code->offset;
+    u4 offset = code->head;
 
     buf_ptr ptr = cj_class_get_buf_ptr(ctx, offset);
 
@@ -692,6 +694,7 @@ CJ_INTERNAL cj_insn_t *cj_code_iter_next(cj_code_iter_t *iter) {
 
     cj_insn_t *insn = malloc(sizeof(cj_insn_t));
     insn->opcode = opcode;
+    insn->mark = len;
 
     switch (opcode) {
 
@@ -1222,7 +1225,7 @@ CJ_INTERNAL void cj_method_free(cj_method_t *method) {
 
     //因为方法的attribute_set在class中被释放，所以在此处不再释放
 
-    cj_sfree(priv(method)->code);
+    cj_code_free(priv(method)->code);
 
     if (priv(method)->descriptor != NULL) {
         cj_descriptor_free(priv(method)->descriptor);
@@ -1298,58 +1301,18 @@ cj_code_t *cj_method_get_code(cj_method_t *method) {
         priv(method) == NULL) {
         return NULL;
     }
-    if (priv(method)->code != NULL) {
-        return priv(method)->code;
-    }
-
-    /*
-     *
-     * Code_attribute {
-     *      u2 attribute_name_index;
-     *      u4 attribute_length;
-     *      u2 max_stack;
-     *      u2 max_locals;
-     *      u4 code_length;
-     *      u1 code[code_length];
-     *      u2 exception_table_length;
-     *      {   u2 start_pc;
-     *          u2 end_pc;
-     *          u2 handler_pc;
-     *          u2 catch_type;
-     *      } exception_table[exception_table_length];
-     *      u2 attributes_count;
-     *      attribute_info attributes[attributes_count];
-     *  }
-     *
-     */
-    u4 offset = 0;
-    cj_class_t *ctx = method->klass;
-
-    for (int i = 0; i < priv(method)->attribute_group->count; ++i) {
-        cj_attribute_t *attr = cj_attribute_group_get(method->klass, priv(method)->attribute_group, i);
-        if (attr->type == CJ_ATTR_Code) {
-            offset = cj_attribute_get_head_offset(attr);
-            break;
+    if (priv(method)->code == NULL) {
+        for (int i = 0; i < priv(method)->attribute_group->count; ++i) {
+            cj_attribute_t *attr = cj_attribute_group_get(method->klass, priv(method)->attribute_group, i);
+            if (attr->type == CJ_ATTR_Code) {
+                priv(method)->code = cj_code_attr_parse(method, attr);
+                break;
+            }
         }
     }
 
-    if (offset == 0) return NULL;
-    buf_ptr buf = cj_class_get_buf_ptr(ctx, offset);
-    u2 max_stack = cj_ru2(buf + 6);
-    u2 max_locals = cj_ru2(buf + 8);
-    u4 code_length = cj_ru4(buf + 10);
-    offset += 14;
 
-    cj_code_t *code = malloc(sizeof(cj_code_t));
-    code->offset = offset;
-    code->length = code_length;
-    code->max_stack = max_stack;
-    code->max_locals = max_locals;
-    code->method = method;
-
-    priv(method)->code = code;
-
-    return code;
+    return priv(method)->code;
 }
 
 cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method) {
@@ -1360,7 +1323,7 @@ cj_descriptor_t *cj_method_get_descriptor(cj_method_t *method) {
     return priv(method)->descriptor;
 }
 
-cj_type_t* cj_method_get_return_type(cj_method_t *method) {
+cj_type_t *cj_method_get_return_type(cj_method_t *method) {
     cj_descriptor_t *descriptor = cj_method_get_descriptor(method);
     return descriptor->type;
 }

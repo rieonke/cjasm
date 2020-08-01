@@ -68,16 +68,11 @@
 /**
  * 用来表示内部使用的函数，不是公开的方法，不建议被外部调用，不保证向后兼容性
  */
-#define CJ_INTERNAL
 #define cj_sfree(ptr) if(ptr != NULL) free(ptr)
 
 /**
  * 内部私有类型，用于存放过程变量，不可以被外部调用，不保证向后兼容性
  */
-typedef struct cj_code_iter_s cj_code_iter_t;
-typedef struct cj_insn_s cj_insn_t;
-typedef struct cj_buf_s cj_buf_t;
-
 struct cj_buf_s {
     unsigned char *buf;
     unsigned int length;
@@ -109,6 +104,7 @@ enum insn_type {
 struct cj_insn_s {
     enum cj_opcode opcode;
     enum insn_type type;
+    u4 mark;
     int var;
     int val;
     int label;

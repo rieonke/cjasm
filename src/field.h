@@ -6,14 +6,6 @@
 #define CJASM_FIELD_H
 
 #include "def.h"
-#include "mem_buf.h"
-#include "util.h"
-#include "hashmap.h"
-#include "annotation.h"
-
-
-typedef struct cj_field_s cj_field_t;
-typedef struct cj_field_group_s cj_field_group_t;
 
 struct cj_field_s {
     u2 access_flags;

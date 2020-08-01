@@ -11,9 +11,6 @@
 #define CJ_BUFFER_SIZE 1024
 #endif
 
-typedef struct cj_mem_buf_pos_s cj_mem_buf_pos_t;
-typedef struct cj_mem_buf_s cj_mem_buf_t;
-
 struct cj_mem_buf_pos_s {
     u4 pos;
     u1 loc;
@@ -67,6 +64,7 @@ void cj_mem_buf_pos_wu2(cj_mem_buf_pos_t *pos, u2 data);
 u4 cj_mem_buf_get_size(cj_mem_buf_t *buf);
 
 void cj_mem_buf_back(cj_mem_buf_t *buf, u4 count);
+
 
 #define cj_mem_buf_printf(buf, ...)                                            \
     {                                                                          \

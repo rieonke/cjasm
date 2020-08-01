@@ -5,10 +5,7 @@
 #ifndef CJASM_CPOOL_H
 #define CJASM_CPOOL_H
 
-#include "util.h"
-#include "mem_buf.h"
-
-typedef struct cj_cpool_s cj_cpool_t;
+#include "def.h"
 
 /**
  * 跟据索引号从常量池中获取指定的字符串常量.
@@ -129,5 +126,7 @@ CJ_INTERNAL u2 cj_cp_get_str_index(cj_class_t *ctx, const_str str);
 CJ_INTERNAL u2 cj_cp_find_name_and_type(cj_class_t *ctx, u2 name_index, u2 desc_index);
 
 CJ_INTERNAL u2 cj_cp_update_name_and_type(cj_class_t*cls, u2 index, u2 name_index, u2 desc_index);
+
+const_str cj_cp_get_class(cj_class_t*cls, u2 idx);
 
 #endif //CJASM_CPOOL_H

@@ -6,11 +6,6 @@
 #define CJASM_ANNOTATION_H
 
 #include "def.h"
-#include "util.h"
-#include "attribute.h"
-#include "mem_buf.h"
-
-typedef struct cj_annotation_group_s cj_annotation_group_t;
 
 struct cj_annotation_group_s {
     u2 count;
@@ -27,6 +22,42 @@ struct cj_annotation_s {
     cj_element_pair_t **attributes;
     cj_pointer priv;
 };
+
+struct cj_element_pair_s {
+    const_str name;
+    cj_element_t *value;
+};
+
+struct cj_element_s {
+    //@formatter:off
+    u1 tag;
+
+    /* const value { */
+    u8 const_num;
+    const_str const_str;
+    /* }             */
+
+    /* enum {        */
+    const_str type_name;
+    const_str const_name;
+    /* }             */
+
+    /* class         */
+    u2 class_info_index;
+    /* }             */
+
+    /* annotation    */
+    cj_annotation_t *annotation;
+    /* }             */
+
+    /* array         */
+    u2 element_count;
+    cj_element_t **elements;
+    /* }             */
+    //@formatter:on
+};
+
+
 
 cj_annotation_t *cj_annotation_new(const_str type, bool visible);
 

@@ -3,9 +3,11 @@
 //
 
 #include <math.h>
+#include "def.h"
 #include "cpool.h"
 #include "hashmap.h"
 #include "class.h"
+#include "util.h"
 #include "mem_buf.h"
 
 
@@ -703,5 +705,20 @@ u2 cj_cp_update_name_and_type(cj_class_t *cls, u2 index, u2 name_index, u2 desc_
     cj_wu2(ptr + 2, desc_index);
 
     return index;
+}
+
+const_str cj_cp_get_class(cj_class_t *cls, u2 idx) {
+    if (cls == NULL || idx == 0) return NULL;
+    cj_cpool_t *cpool = cj_class_get_cpool(cls);
+
+    if (cpool->length <= idx) return NULL;
+
+    u1 type = cpool->types[idx];
+    if (type != CONSTANT_Class) return NULL;
+
+    u4 offset = cpool->offsets[idx];
+    buf_ptr ptr = cj_class_get_buf_ptr(cls, offset);
+    u2 name_idx = cj_ru2(ptr);
+    return cj_cp_get_str(cls, name_idx);
 }
 

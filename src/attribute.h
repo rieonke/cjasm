@@ -6,15 +6,19 @@
 #define CJASM_ATTRIBUTE_H
 
 #include "def.h"
-#include "util.h"
-#include "mem_buf.h"
 
-typedef struct cj_attribute_group_s cj_attribute_group_t;
 struct cj_attribute_group_s {
     u2 count;
     u4 *heads;
     u4 *tails;
     cj_attribute_t **fetched;
+};
+
+struct cj_attribute_s {
+    u4 length;
+    const_str type_name;
+    enum cj_attr_type type;
+    cj_pointer priv;
 };
 
 

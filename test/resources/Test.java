@@ -427,10 +427,19 @@ public final class Test {
         Test t = new Test();
         t.sayBye();
 
-        Thread.sleep(5000);
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         t.willBeRenamed();
 
-        Class<?> aClass = Class.forName("io.ticup.example.LazyLoad");
+        Class<?> aClass = null;
+        try {
+            aClass = Class.forName("io.ticup.example.LazyLoad");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
 
         Thread.sleep(3000);
         Object o = aClass.newInstance();

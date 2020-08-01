@@ -30,6 +30,28 @@ typedef struct cj_annotation_s cj_annotation_t;
 typedef struct cj_element_pair_s cj_element_pair_t;
 typedef struct cj_element_s cj_element_t;
 typedef struct cj_code_s cj_code_t;
+typedef struct cj_cpool_s cj_cpool_t;
+typedef struct cj_attribute_group_s cj_attribute_group_t;
+typedef struct cj_annotation_group_s cj_annotation_group_t;
+typedef struct cj_method_group_s cj_method_group_t;
+typedef struct cj_exception_s cj_exception_t;
+typedef struct cj_line_number_s cj_line_number_t;
+typedef struct cj_line_number_tab_s cj_line_number_tab_t;
+typedef struct cj_exception_tab_s cj_exception_tab_t;
+typedef struct cj_field_s cj_field_t;
+typedef struct cj_field_group_s cj_field_group_t;
+typedef struct cj_mem_buf_pos_s cj_mem_buf_pos_t;
+typedef struct cj_mem_buf_s cj_mem_buf_t;
+typedef struct cj_type_s cj_type_t;
+typedef struct cj_descriptor_s cj_descriptor_t;
+typedef struct cj_code_iter_s cj_code_iter_t;
+typedef struct cj_insn_s cj_insn_t;
+typedef struct cj_buf_s cj_buf_t;
+
+
+
+
+
 
 //@formatter:off
 /*
@@ -366,64 +388,6 @@ enum cj_opcode {
 
 //@formatter:on
 
-struct cj_method_s {
-    u2 access_flags;
-    cj_class_t *klass;
-    const_str name;
-    const_str descriptor;
-    u2 attribute_count;
-    u2 index;
-    cj_pointer priv;
-};
-
-struct cj_attribute_s {
-    u4 length;
-    const_str type_name;
-    enum cj_attr_type type;
-    cj_pointer priv;
-};
-
-struct cj_element_pair_s {
-    const_str name;
-    cj_element_t *value;
-};
-
-struct cj_element_s {
-    //@formatter:off
-    u1 tag;
-
-    /* const value { */
-    u8 const_num;
-    const_str const_str;
-    /* }             */
-
-    /* enum {        */
-    const_str type_name;
-    const_str const_name;
-    /* }             */
-
-    /* class         */
-    u2 class_info_index;
-    /* }             */
-
-    /* annotation    */
-    cj_annotation_t *annotation;
-    /* }             */
-
-    /* array         */
-    u2 element_count;
-    cj_element_t **elements;
-    /* }             */
-    //@formatter:on
-};
-
-struct cj_code_s {
-    u4 offset;
-    u4 length;
-    u2 max_stack;
-    u2 max_locals;
-    cj_method_t *method;
-};
 
 #define CJ_DIRTY_CLEAN 0x0
 #define CJ_DIRTY_NEW 0x1
@@ -433,6 +397,7 @@ struct cj_code_s {
 #define CJ_DIRTY_ATTR 0x10
 #define CJ_DIRTY_DIRTY 0x8000
 
+#define CJ_INTERNAL
 #ifdef CJ_DEBUG
 #define cj_debug(...) fprintf(stdout,"[cjasm] "__VA_ARGS__)
 #else

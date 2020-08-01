@@ -2,10 +2,14 @@
 // Created by Rieon Ke on 2020/7/24.
 //
 
+#include <string.h>
+#include <stdlib.h>
 #include "class.h"
 #include "attribute.h"
+#include "util.h"
 #include "cpool.h"
 #include "annotation.h"
+#include "mem_buf.h"
 
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 struct cj_attribute_priv_s {

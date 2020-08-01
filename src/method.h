@@ -5,16 +5,24 @@
 #ifndef CJASM_METHOD_H
 #define CJASM_METHOD_H
 
-#include "descriptor.h"
-#include "util.h"
+#include "def.h"
 
-typedef struct cj_method_group_s cj_method_group_t;
 struct cj_method_group_s {
     u2 index;
     u2 count;
     u4 *heads;
     u4 *tails;
     cj_method_t **fetched;
+};
+
+struct cj_method_s {
+    u2 access_flags;
+    cj_class_t *klass;
+    const_str name;
+    const_str descriptor;
+    u2 attribute_count;
+    u2 index;
+    cj_pointer priv;
 };
 
 /**

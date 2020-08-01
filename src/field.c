@@ -11,6 +11,7 @@
 #include "attribute.h"
 #include "cpool.h"
 #include "class.h"
+#include "mem_buf.h"
 
 #define priv(f) ((cj_field_priv_t*)(f->priv))
 

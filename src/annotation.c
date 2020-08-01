@@ -6,6 +6,7 @@
 #include "cpool.h"
 #include "class.h"
 #include "annotation.h"
+#include "mem_buf.h"
 #include "attribute.h"
 
 typedef struct cj_annotation_priv_s cj_annotation_priv_t;

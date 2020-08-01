@@ -17,7 +17,7 @@ add_library(cjasm-object OBJECT
         src/annotation.c
         src/field.c
         src/attribute.c
-        )
+        src/code.c)
 
 add_library(cjasm-shared SHARED $<TARGET_OBJECTS:cjasm-object>)
 add_library(cjasm-static STATIC $<TARGET_OBJECTS:cjasm-object>)

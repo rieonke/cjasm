@@ -12,6 +12,8 @@
 #include "descriptor.h"
 #include "attribute.h"
 #include "method.h"
+#include "mem_buf.h"
+#include "annotation.h"
 
 typedef struct cj_class_priv_s cj_class_priv_t;
 struct cj_class_priv_s {

@@ -205,6 +205,7 @@ const char *cj_attr_type_to_str(enum cj_attr_type type) {
             return "Synthetic";
     }
 
+    return "None";
 }
 
 

@@ -1141,7 +1141,7 @@ CJ_INTERNAL cj_insn_t *cj_code_iter_next(cj_code_iter_t *iter) {
     }
 
 
-    assert(insn->opcode != NONE);
+    assert(insn->opcode != OP_NOP);
     iter->current = len;
 
     return insn;

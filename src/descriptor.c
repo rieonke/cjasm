@@ -165,6 +165,9 @@ CJ_INTERNAL cj_descriptor_t *cj_descriptor_parse(const_str desc, size_t len) {
         }
     }
 
+    if (in_arr)
+        cj_debug("in arr: true\n");
+
     descriptor = malloc(sizeof(cj_descriptor_t));
     descriptor->type = cj_type_parse(type);
     free(type);

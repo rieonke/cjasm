@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(cjasm C)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -pedantic -pedantic-errors")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wno-unused-function -pedantic -pedantic-errors")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCJ_DEBUG")
 
 include(third_party/ThirdParty.cmake)
@@ -21,6 +21,11 @@ add_library(cjasm-object OBJECT
 
 add_library(cjasm-shared SHARED $<TARGET_OBJECTS:cjasm-object>)
 add_library(cjasm-static STATIC $<TARGET_OBJECTS:cjasm-object>)
+
+if (UNIX AND NOT APPLE)
+    target_link_libraries(cjasm-static m)
+    target_link_libraries(cjasm-shared m)
+endif ()
 
 set_target_properties(cjasm-object PROPERTIES POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cjasm-static PROPERTIES OUTPUT_NAME cjasm)

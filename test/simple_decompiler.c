@@ -519,13 +519,13 @@ int main(int argc, char **argv) {
                     case 'Z': /*boolean*/
                     case 'F': /*float*/
                     {
-                        cj_mem_buf_printf(out, "%s = %llul", pair->name, pair->value->const_num)
+                        cj_mem_buf_printf(out, "%s = %lul", pair->name, pair->value->const_num)
                         break;
                     }
                     case 'D': /*double*/
                     case 'J': /*long*/
                     {
-                        cj_mem_buf_printf(out, "%s = %llul", pair->name, pair->value->const_num)
+                        cj_mem_buf_printf(out, "%s = %lul", pair->name, pair->value->const_num)
                         break;
                     }
                     case 's':/*string*/

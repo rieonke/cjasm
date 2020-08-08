@@ -33,6 +33,23 @@
 
 #endif
 
+#elif defined(__linux__)
+
+#include <endian.h>
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+
+#define btol16(x) be16toh(x)
+#define btol32(x) be32toh(x)
+#define btol64(x) be64toh(x)
+
+#elif BYTE_ORDER == BIG_ENDIAN
+
+#define btol16(x) (x)
+#define btol32(x) (x)
+#define btol64(x) (x)
+
+#endif
 
 #else
 

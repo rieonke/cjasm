@@ -369,9 +369,9 @@ bool cj_annotation_group_add(cj_class_t *cls, cj_annotation_group_t *group, cj_a
     group->cache = realloc(group->cache, sizeof(cj_annotation_t *) * ++group->count);
     group->cache[group->count - 1] = ann;
     if (ann->visible)
-        cj_attribute_mark_dirty(group->vi_attr);
+        cj_attribute_mark_dirty(group->vi_attr, CJ_DIRTY_DIRTY);
     else
-        cj_attribute_mark_dirty(group->in_attr);
+        cj_attribute_mark_dirty(group->in_attr, CJ_DIRTY_DIRTY);
 
     return true;
 }
@@ -518,9 +518,9 @@ bool cj_annotation_group_remove(cj_class_t *cls, cj_annotation_group_t *group, u
     priv(ann)->dirty |= CJ_DIRTY_REMOVE;
 
     if (ann->visible)
-        cj_attribute_mark_dirty(group->vi_attr);
+        cj_attribute_mark_dirty(group->vi_attr, CJ_DIRTY_DIRTY);
     else
-        cj_attribute_mark_dirty(group->in_attr);
+        cj_attribute_mark_dirty(group->in_attr, CJ_DIRTY_DIRTY);
 
     return true;
 }

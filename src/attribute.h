@@ -51,7 +51,7 @@ u4 cj_attribute_get_head_offset(cj_attribute_t *attr);
 
 void cj_attribute_set_data(cj_attribute_t *attr, void *data);
 
-void cj_attribute_mark_dirty(cj_attribute_t *attr);
+void cj_attribute_mark_dirty(cj_attribute_t *attr, u4 flags);
 
 cj_attribute_group_t *cj_attribute_group_new(u2 count, u4 *heads, u4 *tails);
 

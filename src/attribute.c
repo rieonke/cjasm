@@ -4,12 +4,14 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "class.h"
 #include "attribute.h"
 #include "util.h"
 #include "cpool.h"
 #include "annotation.h"
 #include "mem_buf.h"
+#include "code.h"
 
 typedef struct cj_attribute_priv_s cj_attribute_priv_t;
 struct cj_attribute_priv_s {
@@ -218,8 +220,8 @@ void cj_attribute_set_data(cj_attribute_t *attr, void *data) {
 }
 
 
-void cj_attribute_mark_dirty(cj_attribute_t *attr) {
-    priv(attr)->dirty |= CJ_DIRTY_DIRTY;
+void cj_attribute_mark_dirty(cj_attribute_t *attr, u4 flags) {
+    priv(attr)->dirty |= flags;
 }
 
 cj_attribute_group_t *cj_attribute_group_new(u2 count, u4 *heads, u4 *tails) {
@@ -311,8 +313,12 @@ bool cj_attribute_write_buf(cj_class_t *cls, cj_attribute_t *attr, cj_mem_buf_t 
             break;
         case CJ_ATTR_BootstrapMethods:
             break;
-        case CJ_ATTR_Code:
+        case CJ_ATTR_Code: {
+            cj_pointer data = priv(attr)->data;
+            bool b = cj_code_write_buf(data, buf);
+            assert(b == true);
             break;
+        }
         case CJ_ATTR_ConstantValue:
             break;
         case CJ_ATTR_Deprecated:

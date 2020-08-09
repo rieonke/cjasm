@@ -13,6 +13,7 @@
 #include "../src/util.h"
 #include "../src/annotation.h"
 #include "../src/mem_buf.h"
+#include "../src/code.h"
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -103,6 +104,10 @@ void test_check_write(void **state) {
             cj_annotation_add_kv(ann, (const_str) "hello", (const_str) "world");
             cj_method_rename(method, (unsigned char *) "afterRename");
             cj_method_add_annotation(method, ann);
+        }
+        if (cj_streq(method->name, "main")) {
+            cj_code_t *code = cj_method_get_code(method);
+            cj_code_mark_dirty(code, CJ_DIRTY_DIRTY);
         }
     }
 

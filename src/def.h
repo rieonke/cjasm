@@ -53,6 +53,12 @@ typedef struct cj_descriptor_s cj_descriptor_t;
 typedef struct cj_code_iter_s cj_code_iter_t;
 typedef struct cj_insn_s cj_insn_t;
 typedef struct cj_buf_s cj_buf_t;
+typedef struct cj_local_var_s cj_local_var_t;
+typedef struct cj_local_var_tab_s cj_local_var_tab_t;
+typedef struct cj_local_var_type_s cj_local_var_type_t;
+typedef struct cj_local_var_type_tab_s cj_local_var_type_tab_t;
+typedef struct cj_stack_map_frame_s cj_stack_map_frame_t;
+typedef struct cj_stack_map_tab_s cj_stack_map_tab_t;
 
 
 
@@ -401,6 +407,7 @@ enum cj_opcode {
 #define CJ_DIRTY_NAME 0x4
 #define CJ_DIRTY_DESC 0x8
 #define CJ_DIRTY_ATTR 0x10
+#define CJ_DIRTY_CODE 0x20
 #define CJ_DIRTY_DIRTY 0x8000
 
 #define CJ_INTERNAL

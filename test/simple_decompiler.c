@@ -19,6 +19,27 @@
 #define END printf("}\n");
 //#define START_CLASS(cls) printf("class %s {\n", cls);
 
+const char *parse_frame_type(u1 type) {
+
+    if (type < 64) {
+        return "same";
+    } else if (type < 128) {
+        return "same_locals_1_stack_item";
+    } else if (type == 247) {
+        return "same_locals_1_stack_item_extended";
+    } else if (type >= 248 && type <= 250) {
+        return "chop";
+    } else if (type == 251) {
+        return "same_frame_extended";
+    } else if (type >= 252 && type <= 254) {
+        return "append";
+    } else if (type == 255) {
+        return "full_frame";
+    } else {
+        return "unknown";
+    }
+}
+
 void print_insn(cj_mem_buf_t *buf, cj_insn_t *insn) {
 
     enum cj_opcode code = insn->opcode;
@@ -335,7 +356,7 @@ void print_insn(cj_mem_buf_t *buf, cj_insn_t *insn) {
             break;
         case OP_IFEQ: cj_mem_buf_printf(buf, "%s %d\n", "ifeq", insn->label)
             break;
-        case OP_IFNE: cj_mem_buf_printf(buf, "%s %d\n", "ifne",insn->label)
+        case OP_IFNE: cj_mem_buf_printf(buf, "%s %d\n", "ifne", insn->label)
             break;
         case OP_IFLT: cj_mem_buf_printf(buf, "%s %d\n", "iflt", insn->label)
             break;
@@ -624,13 +645,61 @@ int main(int argc, char **argv) {
         cj_line_number_tab_t *numbers = cj_code_get_line_number_table(code);
         if (numbers != NULL && numbers->length > 0) {
 
-            cj_mem_buf_printf(out, "\t  LineNumberTable: \n");
+            cj_mem_buf_printf(out, "\t\t LineNumberTable: \n");
             for (int j = 0; j < numbers->length; ++j) {
                 cj_line_number_t *num = numbers->line_numbers[j];
                 cj_mem_buf_printf(out, "\t\t\tline %d: %d\n", num->number, num->start_pc);
             }
         }
 
+        cj_local_var_tab_t *var_tab = cj_code_get_local_var_table(code);
+        if (var_tab != NULL && var_tab->length > 0) {
+            /*
+             *       LocalVariableTable:
+             *          Start  Length  Slot  Name   Signature
+             *          0       9     0  this   Lio/ticup/example/Test;
+             */
+            cj_mem_buf_printf(out, "\t\t LocalVariableTable: \n");
+            cj_mem_buf_printf(out, "\t       Start  Length  Slot  Name   Signature: \n");
+
+            for (int j = 0; j < var_tab->length; ++j) {
+                cj_local_var_t *var = var_tab->local_vars[j];
+                const_str name_str = cj_cp_get_str(cls, var->name_index);
+                const_str desc_str = cj_cp_get_str(cls, var->descriptor_index);
+                cj_mem_buf_printf(out, "\t       %d\t\t%d\t\t%d\t%s\t\t%s\n", var->start_pc, var->length, var->index,
+                                  name_str, desc_str);
+            }
+
+        }
+
+
+        cj_local_var_type_tab_t *type_tab = cj_code_get_local_var_type_table(code);
+        if (type_tab != NULL && type_tab->length > 0) {
+
+            cj_mem_buf_printf(out, "\t\t LocalVariableTypeTable: \n");
+            cj_mem_buf_printf(out, "\t       Start  Length  Slot  Name   Signature: \n");
+
+            for (int j = 0; j < type_tab->length; ++j) {
+                cj_local_var_type_t *var = type_tab->types[j];
+                const_str name_str = cj_cp_get_str(cls, var->name_index);
+                const_str desc_str = cj_cp_get_str(cls, var->signature_index);
+                cj_mem_buf_printf(out, "\t       %d\t\t%d\t\t%d\t%s\t\t%s\n", var->start_pc, var->length, var->index,
+                                  name_str, desc_str);
+            }
+
+        }
+
+        cj_stack_map_tab_t *stack_map_tab = cj_code_get_stack_map_table(code);
+        if (stack_map_tab != NULL && stack_map_tab->length > 0) {
+
+            cj_mem_buf_printf(out, "\t\t StackMapTable : number_of_entries = %d \n", stack_map_tab->length);
+
+            for (int j = 0; j < stack_map_tab->length; ++j) {
+                cj_stack_map_frame_t *frame = stack_map_tab->frames[j];
+                cj_mem_buf_printf(out, "\t\t\tframe_type = %d /* %s */\n", frame->type, parse_frame_type(frame->type));
+            }
+
+        }
 
         cj_mem_buf_printf(out, "\t}\n\n")
     }

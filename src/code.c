@@ -224,7 +224,14 @@ void cj_code_free(cj_code_t *code) {
 
     if (code->stack_map_tab != NULL && code->stack_map_tab->frames != NULL) {
         for (int i = 0; i < code->stack_map_tab->length; ++i) {
-            cj_sfree(code->stack_map_tab->frames[i]);
+            cj_stack_map_frame_t *frame = code->stack_map_tab->frames[i];
+            if (frame->veri_info_len > 0 && frame->veri_infoes != NULL) {
+                for (int j = 0; j < frame->veri_info_len; ++j) {
+                    cj_sfree(frame->veri_infoes[j]);
+                }
+                cj_sfree(frame->veri_infoes);
+            }
+            cj_sfree(frame);
         }
         cj_sfree(code->stack_map_tab->frames);
     }
@@ -449,7 +456,7 @@ cj_local_var_type_tab_t *cj_code_get_local_var_type_table(cj_code_t *code) {
 }
 
 
-void cj_code_verification_type_info(buf_ptr ptr, u4 *offset) {
+cj_veri_type_info_t *cj_code_verification_type_info(buf_ptr ptr, u4 *offset) {
 
     /*
     union verification_type_info {
@@ -466,6 +473,8 @@ void cj_code_verification_type_info(buf_ptr ptr, u4 *offset) {
      */
 
     u1 tag = cj_ru1(ptr);
+    u2 data = 0;
+    *offset += 1;
     switch (tag) {
 
         case 0:
@@ -489,12 +498,14 @@ void cj_code_verification_type_info(buf_ptr ptr, u4 *offset) {
         case 6: {
             //ITEM_UninitializedThis
             //u2 offset;
+            data = cj_ru2(ptr + *offset);
             *offset += 2;
             break;
         }
         case 7: {
             //ITEM_Object
             //u2 cpool_index ;
+            data = cj_ru2(ptr + *offset);
             *offset += 2;
             break;
         }
@@ -506,7 +517,11 @@ void cj_code_verification_type_info(buf_ptr ptr, u4 *offset) {
             break;
     }
 
-    *offset += 1;
+    cj_veri_type_info_t *info = malloc(sizeof(cj_veri_type_info_t));
+    info->type = tag;
+    info->data = data;
+
+    return info;
 }
 
 
@@ -543,7 +558,9 @@ cj_stack_map_tab_t *cj_code_get_stack_map_table(cj_code_t *code) {
                 if (len > 0) {
                     cj_stack_map_frame_t **frames = malloc(sizeof(cj_stack_map_frame_t *) * len);
                     for (int j = 0; j < len; ++j) {
-                        cj_stack_map_frame_t *frame = malloc(sizeof(cj_stack_map_frame_t));
+
+                        cj_stack_map_frame_t *frame = cj_stack_map_frame_new();
+
                         u1 type = cj_ru1(ptr + offset);
                         ++offset;
                         // u1 frame_type = SAME; /* 0-63 */
@@ -551,72 +568,99 @@ cj_stack_map_tab_t *cj_code_get_stack_map_table(cj_code_t *code) {
                         if (type < 64) {
                             frame->frame_type = CJ_SMFT_SAME;
                         } else if (type < 128) {
-                            frame->frame_type = CJ_SMFT_SAME_LOCALS_1_STACK_ITEM;
                             u4 ofst = 0;
-                            cj_code_verification_type_info(ptr + offset, &ofst);
+                            cj_veri_type_info_t *info = cj_code_verification_type_info(ptr + offset, &ofst);
                             offset += ofst;
+
+                            frame->frame_type = CJ_SMFT_SAME_LOCALS_1_STACK_ITEM;
+                            frame->veri_infoes = malloc(sizeof(cj_veri_type_info_t *));
+                            frame->veri_info_len = 1;
+                            frame->veri_infoes[0] = info;
+
                         } else if (type == 247) {
-                            frame->frame_type = CJ_SMFT_SAME_LOCALS_1_STACK_ITEM_EXTENDED;
                             u2 offset_delta = cj_ru2(ptr + offset);
                             offset += 2;
-
-                            frame->offset_delta = offset_delta;
-
                             u4 ofst = 0;
-                            cj_code_verification_type_info(ptr + offset, &ofst);
+                            cj_veri_type_info_t *info = cj_code_verification_type_info(ptr + offset, &ofst);
                             offset += ofst;
+
+                            frame->frame_type = CJ_SMFT_SAME_LOCALS_1_STACK_ITEM_EXTENDED;
+                            frame->offset_delta = offset_delta;
+                            frame->frame_type = CJ_SMFT_SAME_LOCALS_1_STACK_ITEM;
+                            frame->veri_infoes = malloc(sizeof(cj_veri_type_info_t *));
+                            frame->veri_info_len = 1;
+                            frame->veri_infoes[0] = info;
 
                         } else if (type >= 248 && type <= 250) {
+                            u2 offset_delta = cj_ru2(ptr + offset);
+                            offset += 2;
+
                             frame->frame_type = CJ_SMFT_CHOP;
-                            u2 offset_delta = cj_ru2(ptr + offset);
-                            offset += 2;
-
                             frame->offset_delta = offset_delta;
-
                         } else if (type == 251) {
-                            frame->frame_type = CJ_SMFT_SAME_FRAME_EXTENDED;
                             u2 offset_delta = cj_ru2(ptr + offset);
                             offset += 2;
 
+                            frame->frame_type = CJ_SMFT_SAME_FRAME_EXTENDED;
                             frame->offset_delta = offset_delta;
                         } else if (type >= 252 && type <= 254) {
-                            frame->frame_type = CJ_SMFT_APPEND;
                             u2 offset_delta = cj_ru2(ptr + offset);
                             offset += 2;
 
-                            frame->offset_delta = offset_delta;
-
                             int vel = type - 251;
+
+                            cj_veri_type_info_t **infoes = malloc(sizeof(cj_veri_type_info_t *) * vel);
+
                             for (int k = 0; k < vel; ++k) {
                                 u4 ofst = 0;
-                                cj_code_verification_type_info(ptr + offset, &ofst);
+                                infoes[k] = cj_code_verification_type_info(ptr + offset, &ofst);
                                 offset += ofst;
                             }
 
-                        } else if (type == 255) {
-                            frame->frame_type = CJ_SMFT_FULL_FRAME;
+                            frame->frame_type = CJ_SMFT_APPEND;
+                            frame->offset_delta = offset_delta;
+                            frame->veri_info_len = vel;
+                            frame->veri_infoes = infoes;
 
+                        } else if (type == 255) {
+
+                            u2 vel = 0;
+                            cj_veri_type_info_t **infoes = NULL;
                             u2 offset_delta = cj_ru2(ptr + offset);
                             u2 number_of_locals = cj_ru2(ptr + offset + 2);
                             offset += 4;
 
-                            frame->offset_delta = offset_delta;
-
-                            for (int k = 0; k < number_of_locals; ++k) {
-                                u4 ofst = 0;
-                                cj_code_verification_type_info(ptr + offset, &ofst);
-                                offset += ofst;
+                            if (number_of_locals > 0) {
+                                vel += number_of_locals;
+                                infoes = malloc(sizeof(cj_veri_type_info_t *) * vel);
+                                for (int k = 0; k < number_of_locals; ++k) {
+                                    u4 ofst = 0;
+                                    infoes[k] = cj_code_verification_type_info(ptr + offset, &ofst);
+                                    offset += ofst;
+                                }
                             }
-
 
                             u2 number_of_stack_items = cj_ru2(ptr + offset);
                             offset += 2;
-                            for (int k = 0; k < number_of_stack_items; ++k) {
-                                u4 ofst = 0;
-                                cj_code_verification_type_info(ptr + offset, &ofst);
-                                offset += ofst;
+                            if (number_of_stack_items > 0) {
+                                u2 start = vel;
+                                vel += number_of_stack_items;
+                                if (infoes == NULL) {
+                                    infoes = malloc(sizeof(cj_veri_type_info_t *) * vel);
+                                } else {
+                                    infoes = realloc(infoes, sizeof(cj_veri_type_info_t *) * vel);
+                                }
+                                for (int k = 0; k < number_of_stack_items; ++k) {
+                                    u4 ofst = 0;
+                                    infoes[k + start] = cj_code_verification_type_info(ptr + offset, &ofst);
+                                    offset += ofst;
+                                }
                             }
 
+                            frame->frame_type = CJ_SMFT_FULL_FRAME;
+                            frame->offset_delta = offset_delta;
+                            frame->veri_info_len = vel;
+                            frame->veri_infoes = infoes;
 
                         } else {
                             fprintf(stderr, "Error: invalid stack map frame tag %d\n", type);
@@ -637,4 +681,15 @@ cj_stack_map_tab_t *cj_code_get_stack_map_table(cj_code_t *code) {
     }
 
     return code->stack_map_tab;
+}
+
+cj_stack_map_frame_t *cj_stack_map_frame_new() {
+
+    cj_stack_map_frame_t *frame = malloc(sizeof(cj_stack_map_frame_t));
+    frame->frame_type = 0;
+    frame->type = 0;
+    frame->veri_info_len = 0;
+    frame->veri_infoes = NULL;
+
+    return frame;
 }

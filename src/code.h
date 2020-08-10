@@ -81,10 +81,29 @@ enum cj_stack_map_frame_type {
     CJ_SMFT_FULL_FRAME
 };
 
+enum cj_veri_type {
+    CJ_VT_ITEM_TOP = 0,
+    CJ_VT_ITEM_INTEGER = 1,
+    CJ_VT_ITEM_FLOAT = 2,
+    CJ_VT_ITEM_DOUBLE = 3,
+    CJ_VT_ITEM_LONG = 4,
+    CJ_VT_ITEM_NULL = 5,
+    CJ_VT_ITEM_UNINITIALIZED_THIS = 6,
+    CJ_VT_ITEM_OBJECT = 7,
+    CJ_VT_ITEM_UNINITIALIZED = 8
+};
+
 struct cj_stack_map_frame_s {
     u1 type;
     enum cj_stack_map_frame_type frame_type;
     u2 offset_delta;
+    u2 veri_info_len;
+    cj_veri_type_info_t **veri_infoes;
+};
+
+struct cj_veri_type_info_s {
+    u1 type;
+    u2 data;
 };
 
 struct cj_stack_map_tab_s {
@@ -115,5 +134,7 @@ bool cj_code_write_buf(cj_code_t *code, cj_mem_buf_t *buf);
 void cj_code_free(cj_code_t *code);
 
 void cj_code_mark_dirty(cj_code_t *code, u4 flags);
+
+cj_stack_map_frame_t *cj_stack_map_frame_new();
 
 #endif //CJASM_CODE_H

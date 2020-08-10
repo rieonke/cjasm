@@ -19,6 +19,56 @@
 #define END printf("}\n");
 //#define START_CLASS(cls) printf("class %s {\n", cls);
 
+void parse_veri_type(cj_veri_type_info_t *info, cj_mem_buf_t *buf, cj_class_t *cls) {
+    enum cj_veri_type type = info->type;
+    switch (type) {
+        case CJ_VT_ITEM_TOP: {
+            cj_mem_buf_printf(buf, "top");
+            break;
+        }
+        case CJ_VT_ITEM_INTEGER: {
+
+            cj_mem_buf_printf(buf, "int");
+            break;
+        }
+        case CJ_VT_ITEM_FLOAT: {
+
+            cj_mem_buf_printf(buf, "float");
+            break;
+        }
+        case CJ_VT_ITEM_DOUBLE: {
+            cj_mem_buf_printf(buf, "double");
+            break;
+        }
+        case CJ_VT_ITEM_LONG: {
+            cj_mem_buf_printf(buf, "long");
+            break;
+        }
+        case CJ_VT_ITEM_NULL: {
+            cj_mem_buf_printf(buf, "null");
+            break;
+        }
+        case CJ_VT_ITEM_UNINITIALIZED_THIS: {
+            cj_mem_buf_printf(buf, "this");
+            break;
+        }
+        case CJ_VT_ITEM_OBJECT: {
+            const_str cls_name = cj_cp_get_class(cls, info->data);
+            cj_mem_buf_printf(buf, "object %s", cls_name);
+            break;
+        }
+        case CJ_VT_ITEM_UNINITIALIZED: {
+            cj_mem_buf_printf(buf, "uninitialized");
+            break;
+        }
+        default: {
+            cj_mem_buf_printf(buf, "none");
+            break;
+        }
+    }
+
+}
+
 const char *parse_frame_type(u1 type) {
 
     if (type < 64) {
@@ -697,6 +747,18 @@ int main(int argc, char **argv) {
             for (int j = 0; j < stack_map_tab->length; ++j) {
                 cj_stack_map_frame_t *frame = stack_map_tab->frames[j];
                 cj_mem_buf_printf(out, "\t\t\tframe_type = %d /* %s */\n", frame->type, parse_frame_type(frame->type));
+                if (frame->veri_info_len > 0 && frame->veri_infoes != NULL) {
+                    cj_mem_buf_printf(out, "\t\t\t\t[")
+                    for (int k = 0; k < frame->veri_info_len; ++k) {
+                        cj_veri_type_info_t *info = frame->veri_infoes[k];
+                        parse_veri_type(info, out, cls);
+                        if (k != frame->veri_info_len - 1) {
+                            cj_mem_buf_printf(out, ", ");
+                        }
+                    }
+                    cj_mem_buf_printf(out, "]\n")
+                }
+
             }
 
         }

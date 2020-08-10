@@ -59,6 +59,7 @@ typedef struct cj_local_var_type_s cj_local_var_type_t;
 typedef struct cj_local_var_type_tab_s cj_local_var_type_tab_t;
 typedef struct cj_stack_map_frame_s cj_stack_map_frame_t;
 typedef struct cj_stack_map_tab_s cj_stack_map_tab_t;
+typedef struct cj_veri_type_info_s cj_veri_type_info_t;
 
 
 

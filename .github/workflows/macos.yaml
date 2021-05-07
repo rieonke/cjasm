@@ -36,6 +36,7 @@ jobs:
         with:
           vcpkgArguments: cmocka:x64-osx
           vcpkgDirectory: ${{ runner.workspace }}/vcpkg/
+          vcpkgGitCommitId: 44d94c2edbd44f0c01d66c2ad95eb6982a9a61bc
           vcpkgTriplet: x64-osx
 
       - name: Build And Test

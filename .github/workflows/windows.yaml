@@ -1,0 +1,155 @@
+---
+name: windows
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**.md'
+      - '.mailmap'
+      - 'ChangeLog*'
+      - 'whatsnew*'
+      - 'LICENSE'
+  push:
+    paths-ignore:
+      - '**.md'
+      - '.mailmap'
+      - 'ChangeLog*'
+      - 'whatsnew*'
+      - 'LICENSE'
+
+jobs:
+  vs2017:
+    runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2016]
+
+    steps:
+      - uses: actions/checkout@v2.0.0
+
+      - name: Prepare vcpkg
+        uses: lukka/run-vcpkg@v2
+        id: runvcpkg
+        with:
+          vcpkgArguments: cmocka:x64-windows
+          vcpkgDirectory: ${{ runner.workspace }}/vcpkg/
+          vcpkgGitCommitId: 8e76503a769e153dad8f4e7b2c95a152bb35edaa
+          vcpkgTriplet: x64-windows
+
+      - name: Build And Test
+        shell: powershell
+        run: |
+          mkdir build -ea 0
+          cd build
+          $CMAKE_CMD="cmake -G 'Visual Studio 15 2017 Win64' -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake .."
+          function cmake_configure($retry)
+          {
+            $errcode=0
+            try {
+              if ($retry -eq 0) {
+                echo "[cmake configure retry] $CMAKE_CMD"
+              } else {
+                echo "[cmake configure] $CMAKE_CMD"
+              }
+              Invoke-Expression $CMAKE_CMD
+              $errcode=$LastExitCode
+            }
+            catch {
+              $errcode=1
+            }
+            finally {
+              if ($errcode -ne 0) {
+                if ($retry -eq 0) {
+                  $host.SetShouldExit($LastExitCode)
+                } else {
+                  echo "Remove all entries in build directory"
+                  rm -r -fo *
+                  cmake_configure 0
+                }
+              }
+            }
+          }
+          cmake_configure 1
+          try {
+            cmake --build .  -- /nologo /verbosity:minimal
+            if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+            else {
+              ctest --output-on-failure
+              if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+            }
+          } catch {
+            $host.SetShouldExit($LastExitCode)
+          }
+
+  vs2019:
+    runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2019]
+
+    steps:
+      - uses: actions/checkout@v2.0.0
+
+      - name: Prepare vcpkg
+        uses: lukka/run-vcpkg@v2
+        id: runvcpkg
+        with:
+          vcpkgArguments: cmocka:x64-windows
+          vcpkgDirectory: ${{ runner.workspace }}/vcpkg/
+          vcpkgGitCommitId: 8e76503a769e153dad8f4e7b2c95a152bb35edaa
+          vcpkgTriplet: x64-windows
+
+      - name: Build And Test
+        shell: powershell
+        run: |
+          mkdir build -ea 0
+          cd build
+          if ("${{ matrix.os }}" -eq "windows-2016") {
+            $CMAKE_CMD="cmake -G 'Visual Studio 15 2017 Win64' -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake .."
+          }
+          else { # windows-2019
+            $CMAKE_CMD="cmake -G 'Visual Studio 16 2019' -A x64 -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake .."
+          }
+          function cmake_configure($retry)
+          {
+            $errcode=0
+            try {
+              if ($retry -eq 0) {
+                echo "[cmake configure retry] $CMAKE_CMD"
+              } else {
+                echo "[cmake configure] $CMAKE_CMD"
+              }
+              Invoke-Expression $CMAKE_CMD
+              $errcode=$LastExitCode
+            }
+            catch {
+              $errcode=1
+            }
+            finally {
+              if ($errcode -ne 0) {
+                if ($retry -eq 0) {
+                  $host.SetShouldExit($LastExitCode)
+                } else {
+                  echo "Remove all entries in build directory"
+                  rm -r -fo *
+                  cmake_configure 0
+                }
+              }
+            }
+          }
+          cmake_configure 1
+          try {
+            cmake --build . -- /nologo /verbosity:minimal
+            if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+            else {
+              ctest --output-on-failure
+              if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+            }
+          } catch {
+            $host.SetShouldExit($LastExitCode)
+          }

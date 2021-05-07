@@ -1,0 +1,53 @@
+---
+name: linux
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**.md'
+      - '.mailmap'
+      - 'ChangeLog*'
+      - 'whatsnew*'
+      - 'LICENSE'
+  push:
+    paths-ignore:
+      - '**.md'
+      - '.mailmap'
+      - 'ChangeLog*'
+      - 'whatsnew*'
+      - 'LICENSE'
+
+jobs:
+  cmake:
+    runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04]
+
+    steps:
+      - uses: actions/checkout@v2.0.0
+
+      - name: Prepare vcpkg
+        uses: lukka/run-vcpkg@v2
+        id: runvcpkg
+        with:
+          vcpkgArguments: cmocka:x64-linux
+          vcpkgDirectory: ${{ runner.workspace }}/vcpkg/
+          vcpkgGitCommitId: 8e76503a769e153dad8f4e7b2c95a152bb35edaa
+          vcpkgTriplet: x64-linux
+
+      - name: Build And Test
+        shell: bash
+        run: |
+          JOBS=2
+          export CTEST_PARALLEL_LEVEL=$JOBS
+          export CTEST_OUTPUT_ON_FAILURE=1
+          mkdir -p build
+          cd build
+          echo [cmake]: cmake -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+          cmake -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake .. || (rm -rf * && cmake -DCMAKE_TOOLCHAIN_FILE=${{ runner.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake ..)
+          cmake --build .
+          ctest --output-on-failure

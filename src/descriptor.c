@@ -236,6 +236,7 @@ cj_type_t *cj_type_parse(const char *str) {
     type->is_array = false;
     type->is_primitive = false;
     type->package = NULL;
+    type->raw_package = NULL;
     type->simple_name = NULL;
     type->raw_name = strdup(str);
     type->name = strdup(type->raw_name);
@@ -247,8 +248,8 @@ cj_type_t *cj_type_parse(const char *str) {
     if (type->simple_name != type->raw_name) {
         package_len = (int) (type->simple_name - type->raw_name) - 1;
         type->package = strndup(type->name, package_len);
+        type->raw_package = strdup(type->package);
     }
-    type->raw_package = strdup(type->package);
 
     if (package_len > 0) {
         cj_str_replace(type->raw_package, package_len, '.', '/');

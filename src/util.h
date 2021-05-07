@@ -19,7 +19,7 @@
 #define btol32(x) end_be32toh(x)
 #define btol64(x) end_be64toh(x)
 
-#if HAVE_FUNC_STRNDUP == 0
+#ifdef _WIN32
 
 inline char *strndup(const char *str, unsigned int len) {
     char *out = malloc(len + 1);

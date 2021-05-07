@@ -42,7 +42,7 @@ struct cj_class_priv_s {
 
     bool initialized;
 };
-#define priv(c) ((cj_class_priv_t*)(c->priv))
+#define priv(c) ((cj_class_priv_t*)((c)->priv))
 
 /**
  * 设置class、field、method、attribute的偏移量offset
@@ -284,6 +284,7 @@ CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str raw) {
     int package_len = 0;
     ctx->raw_name = raw;
     ctx->package = NULL;
+    ctx->raw_package = NULL;
 
     ctx->name = (const_str) strdup((char *) ctx->raw_name);
     cj_str_replace(ctx->name, strlen((char *) ctx->name), '/', '.');
@@ -292,8 +293,8 @@ CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str raw) {
     if (ctx->short_name != ctx->raw_name) {
         package_len = (int) (ctx->short_name - ctx->raw_name) - 1;
         ctx->package = (const_str) strndup((char *) ctx->name, package_len);
+        ctx->raw_package = (const_str) strdup((char *) ctx->package);
     }
-    ctx->raw_package = (const_str) strdup((char *) ctx->package);
 
     if (package_len > 0) {
         cj_str_replace(ctx->raw_package, package_len, '.', '/');
@@ -422,7 +423,7 @@ bool cj_class_remove_field(cj_class_t *ctx, u2 idx) {
 
     cj_field_mark_removed(field);
 
-    return false;
+    return true;
 }
 
 bool cj_class_add_field(cj_class_t *ctx, cj_field_t *field) {
@@ -627,7 +628,7 @@ bool cj_class_write_buf(cj_class_t *cls, cj_mem_buf_t *buf) {
         cj_mem_buf_write_str(buf, (char *) priv(cls)->buf + mso, priv(cls)->buf_len - mso);
     }
 
-    if (buf != NULL) cj_mem_buf_flush(buf);
+    cj_mem_buf_flush(buf);
 
     return true;
 }

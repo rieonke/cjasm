@@ -144,7 +144,11 @@ void test_check_write(void **state) {
 
 
     FILE *f;
+#ifdef _WIN32
     fopen_s(&f, "Test1.class", "wb");
+#else
+    f = fopen("Test1.class","wb");
+#endif
     fwrite(out->data, sizeof(u1), len, f);
     fclose(f);
 

@@ -34,11 +34,10 @@ if (UNIX AND NOT APPLE)
 endif ()
 
 set_target_properties(cjasm-object PROPERTIES POSITION_INDEPENDENT_CODE 1)
-set_target_properties(cjasm-static PROPERTIES OUTPUT_NAME cjasm)
+set_target_properties(cjasm-static PROPERTIES OUTPUT_NAME cjasm-static)
 set_target_properties(cjasm-shared PROPERTIES OUTPUT_NAME cjasm)
 
 find_package(cmocka CONFIG REQUIRED)
-
 find_package(Java REQUIRED)
 include(UseJava)
 

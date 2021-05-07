@@ -77,7 +77,7 @@ jobs:
             cmake --build .  -- /nologo /verbosity:minimal
             if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
             else {
-              ctest --output-on-failure -C $BUILD_TYPE
+              ctest --output-on-failure -C Debug
               if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
             }
           } catch {
@@ -147,7 +147,7 @@ jobs:
             cmake --build . -- /nologo /verbosity:minimal
             if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
             else {
-              ctest --output-on-failure -C $BUILD_TYPE
+              ctest --output-on-failure -C Debug
               if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
             }
           } catch {

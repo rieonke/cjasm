@@ -9,7 +9,7 @@ long cj_load_file(char *path, unsigned char **buf) {
     FILE *f = NULL;
     long len;
 
-    f = fopen(path, "r");
+    fopen_s(&f, path, "rb");
     if (!f) {
         return -1;
     }
@@ -18,10 +18,9 @@ long cj_load_file(char *path, unsigned char **buf) {
     len = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    *buf = malloc(sizeof(char) * (len + 1));
-    (*buf)[len] = 0;
+    *buf = calloc(len, sizeof(char));
 
-    fread(*buf, sizeof(char), len, f);
+    fread_s(*buf, len, sizeof(char), len, f);
     fclose(f);
 
     return len;

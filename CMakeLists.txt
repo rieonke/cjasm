@@ -2,10 +2,16 @@ cmake_minimum_required(VERSION 3.0)
 project(cjasm C)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wno-unused-function -pedantic -pedantic-errors")
+if (MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+else ()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wno-unused-function -pedantic -pedantic-errors")
+endif ()
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DCJ_DEBUG")
 
-include(third_party/ThirdParty.cmake)
+include(CheckSymbolExists)
+check_symbol_exists(strndup "string.h" HAVE_FUNC_STRNDUP)
+
 
 add_library(cjasm-object OBJECT
         src/util.c
@@ -31,6 +37,8 @@ set_target_properties(cjasm-object PROPERTIES POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cjasm-static PROPERTIES OUTPUT_NAME cjasm)
 set_target_properties(cjasm-shared PROPERTIES OUTPUT_NAME cjasm)
 
+find_package(cmocka CONFIG REQUIRED)
+
 find_package(Java REQUIRED)
 include(UseJava)
 
@@ -52,8 +60,8 @@ add_custom_command(
 
 function(cjasm_add_ctest name)
     add_executable(test_${name} test/${name}.c)
-    target_link_libraries(test_${name} cjasm-static cmocka)
-    add_dependencies(test_${name} cjasm-static libcmocka test_java_jar)
+    target_link_libraries(test_${name} cjasm-static cmocka::cmocka)
+    add_dependencies(test_${name} cjasm-static test_java_jar)
     add_test(NAME test_${name} COMMAND test_${name} ${ARGN})
 endfunction()
 

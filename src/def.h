@@ -27,7 +27,7 @@ typedef signed long long int i8;
 typedef u2 cj_modifiers_t;
 typedef void *cj_pointer;
 typedef const unsigned char *const_str;
-typedef const_str const buf_ptr;
+typedef const_str buf_ptr;
 
 typedef struct cj_class_s cj_class_t;
 typedef struct cj_method_s cj_method_t;

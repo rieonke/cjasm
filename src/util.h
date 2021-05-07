@@ -13,47 +13,20 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <sys/types.h>
+#include "endianness.h"
 
-#if defined(__APPLE__)
+#define btol16(x) end_be16toh(x)
+#define btol32(x) end_be32toh(x)
+#define btol64(x) end_be64toh(x)
 
-#include <machine/endian.h>
-#include <libkern/OSByteOrder.h>
+#if HAVE_FUNC_STRNDUP == 0
 
-#if BYTE_ORDER == LITTLE_ENDIAN
-
-#define btol16(x) OSSwapInt16(x)
-#define btol32(x) OSSwapInt32(x)
-#define btol64(x) OSSwapInt64(x)
-
-#elif BYTE_ORDER == BIG_ENDIAN
-
-#define btol16(x) (x)
-#define btol32(x) (x)
-#define btol64(x) (x)
-
-#endif
-
-#elif defined(__linux__)
-
-#include <endian.h>
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-
-#define btol16(x) be16toh(x)
-#define btol32(x) be32toh(x)
-#define btol64(x) be64toh(x)
-
-#elif BYTE_ORDER == BIG_ENDIAN
-
-#define btol16(x) (x)
-#define btol32(x) (x)
-#define btol64(x) (x)
-
-#endif
-
-#else
-
-#error "unsupported os type"
+inline char *strndup(const char *str, unsigned int len) {
+    char *out = malloc(len + 1);
+    memset(out + len, 0, 1);
+    memcpy(out, str, len);
+    return out;
+}
 
 #endif
 
@@ -185,6 +158,7 @@ enum cj_cp_type {
     ++v
 
 /*todo 如果所加入的attr已经存在了，则获取现有的，impl cj_attribute_group_add_or_get */ \
+
 #define cj_annotation_group_init_or_create(comp, visible)                                                           \
     if (!priv(comp)->annotation_set_initialized) {                                                                  \
         priv(comp)->annotation_set_initialized = cj_annotation_group_init(comp->klass, priv(comp)->attribute_group, \

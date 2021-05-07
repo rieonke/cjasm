@@ -231,15 +231,23 @@ unsigned char *cj_descriptor_to_string(cj_descriptor_t *desc) {
 cj_type_t *cj_type_parse(const char *str) {
 
     cj_type_t *type = malloc(sizeof(cj_type_t));
+    int package_len = 0;
 
+    type->is_array = false;
+    type->is_primitive = false;
+    type->package = NULL;
+    type->simple_name = NULL;
     type->raw_name = strdup(str);
     type->name = strdup(type->raw_name);
+
     cj_str_replace(type->name, strlen(type->name), '/', '.');
 
     char *short_name = strrchr(type->raw_name, '/');
     type->simple_name = short_name ? short_name + 1 : type->raw_name;
-    int package_len = (int) (type->simple_name - type->raw_name) - 1;
-    type->package = strndup(type->name, package_len);
+    if (type->simple_name != type->raw_name) {
+        package_len = (int) (type->simple_name - type->raw_name) - 1;
+        type->package = strndup(type->name, package_len);
+    }
     type->raw_package = strdup(type->package);
 
     if (package_len > 0) {

@@ -143,7 +143,8 @@ void test_check_write(void **state) {
 #endif
 
 
-    FILE *f = fopen("Test1.class", "wb");
+    FILE *f;
+    fopen_s(&f, "Test1.class", "wb");
     fwrite(out->data, sizeof(u1), len, f);
     fclose(f);
 

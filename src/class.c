@@ -281,14 +281,18 @@ CJ_INTERNAL void cj_class_update_name(cj_class_t *ctx, const_str raw) {
         cj_sfree((char *) ctx->raw_package);
     }
 
+    int package_len = 0;
     ctx->raw_name = raw;
+    ctx->package = NULL;
 
     ctx->name = (const_str) strdup((char *) ctx->raw_name);
     cj_str_replace(ctx->name, strlen((char *) ctx->name), '/', '.');
     char *short_name = strrchr((char *) ctx->raw_name, '/');
     ctx->short_name = short_name ? (const_str) short_name + 1 : ctx->raw_name;
-    int package_len = (int) (ctx->short_name - ctx->raw_name) - 1;
-    ctx->package = (const_str) strndup((char *) ctx->name, package_len);
+    if (ctx->short_name != ctx->raw_name) {
+        package_len = (int) (ctx->short_name - ctx->raw_name) - 1;
+        ctx->package = (const_str) strndup((char *) ctx->name, package_len);
+    }
     ctx->raw_package = (const_str) strdup((char *) ctx->package);
 
     if (package_len > 0) {
@@ -544,21 +548,21 @@ cj_annotation_t *cj_class_get_annotation(cj_class_t *ctx, u2 idx) {
     return cj_annotation_group_get(ctx, priv(ctx)->annotation_group, idx);
 }
 
-inline buf_ptr cj_class_get_buf_ptr(cj_class_t *ctx, u4 offset) {
+buf_ptr cj_class_get_buf_ptr(cj_class_t *ctx, u4 offset) {
     if (ctx == NULL || priv(ctx) == NULL || priv(ctx)->buf == NULL || priv(ctx)->buf_len <= offset) return NULL;
     return priv(ctx)->buf + offset;
 }
 
-inline cj_cpool_t *cj_class_get_cpool(cj_class_t *ctx) {
+cj_cpool_t *cj_class_get_cpool(cj_class_t *ctx) {
     if (ctx == NULL || priv(ctx) == NULL) return NULL;
     return priv(ctx)->cpool;
 }
 
-inline cj_attribute_group_t *cj_class_get_field_attribute_group(cj_class_t *cls, u2 idx) {
+cj_attribute_group_t *cj_class_get_field_attribute_group(cj_class_t *cls, u2 idx) {
     return priv(cls)->field_attribute_groups[idx];
 }
 
-inline cj_attribute_group_t *cj_class_get_method_attribute_group(cj_class_t *cls, u2 idx) {
+cj_attribute_group_t *cj_class_get_method_attribute_group(cj_class_t *cls, u2 idx) {
     return priv(cls)->method_attribute_groups[idx];;
 }
 
